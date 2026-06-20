@@ -16,6 +16,7 @@ const STAGES: { value: string; label: string }[] = [
   { value: "lead", label: "Лид" },
   { value: "presentation", label: "Презентация" },
   { value: "negotiation", label: "Переговоры" },
+  { value: "installation", label: "На установку" },
   { value: "won", label: "Продано" },
   { value: "lost", label: "Проигрыш" },
 ];
