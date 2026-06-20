@@ -421,7 +421,13 @@ export type Database = {
         | "presentation_scheduled"
         | "sold"
         | "refused"
-      deal_stage: "lead" | "presentation" | "negotiation" | "won" | "lost"
+      deal_stage:
+        | "lead"
+        | "presentation"
+        | "negotiation"
+        | "installation"
+        | "won"
+        | "lost"
       install_status: "scheduled" | "in_progress" | "completed" | "cancelled"
       product_type: "vacuum" | "filter" | "accessory"
       task_status: "todo" | "in_progress" | "done"
@@ -562,7 +568,14 @@ export const Constants = {
         "sold",
         "refused",
       ],
-      deal_stage: ["lead", "presentation", "negotiation", "won", "lost"],
+      deal_stage: [
+        "lead",
+        "presentation",
+        "negotiation",
+        "installation",
+        "won",
+        "lost",
+      ],
       install_status: ["scheduled", "in_progress", "completed", "cancelled"],
       product_type: ["vacuum", "filter", "accessory"],
       task_status: ["todo", "in_progress", "done"],
