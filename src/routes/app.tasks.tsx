@@ -26,7 +26,7 @@ function Tasks() {
 
   const { data: tasks = [] } = useQuery({
     queryKey: ["tasks"],
-    queryFn: async () => (await supabase.from("tasks").select("*, profiles!tasks_assignee_id_fkey(full_name)").order("created_at", { ascending: false })).data ?? [],
+    queryFn: async () => (await supabase.from("tasks").select("*").order("created_at", { ascending: false })).data ?? [],
   });
 
   const create = useMutation({
