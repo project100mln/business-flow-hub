@@ -152,12 +152,15 @@ function Service() {
                 <TableCell className="text-muted-foreground">{s.scheduled_at ? new Date(s.scheduled_at).toLocaleString("ru-RU") : "—"}</TableCell>
                 <TableCell className="text-right">{new Intl.NumberFormat("ru-RU").format(Number(s.cost || 0))} ₸</TableCell>
                 <TableCell className="text-right">
-                  <Button size="icon" variant="ghost" onClick={() => setForm({
-                    id: s.id, client_id: s.client_id || "", object_id: s.object_id || "",
-                    issue: s.issue, status: s.status, priority: s.priority,
-                    scheduled_at: s.scheduled_at ? s.scheduled_at.slice(0,16) : "",
-                    cost: String(s.cost || ""), notes: s.notes || "",
-                  }) || setOpen(true)}><Pencil className="size-4" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => {
+                    setForm({
+                      id: s.id, client_id: s.client_id || "", object_id: s.object_id || "",
+                      issue: s.issue, status: s.status, priority: s.priority,
+                      scheduled_at: s.scheduled_at ? s.scheduled_at.slice(0,16) : "",
+                      cost: String(s.cost || ""), notes: s.notes || "",
+                    });
+                    setOpen(true);
+                  }}><Pencil className="size-4" /></Button>
                   {hasRole("admin") && <Button size="icon" variant="ghost" onClick={() => confirm("Удалить?") && del.mutate(s.id)}><Trash2 className="size-4 text-destructive" /></Button>}
                 </TableCell>
               </TableRow>

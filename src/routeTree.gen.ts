@@ -14,7 +14,11 @@ import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppTeamRouteImport } from './routes/app.team'
 import { Route as AppTasksRouteImport } from './routes/app.tasks'
+import { Route as AppServiceRouteImport } from './routes/app.service'
 import { Route as AppProductsRouteImport } from './routes/app.products'
+import { Route as AppOwnerRouteImport } from './routes/app.owner'
+import { Route as AppObjectsRouteImport } from './routes/app.objects'
+import { Route as AppInstallmentsRouteImport } from './routes/app.installments'
 import { Route as AppInstallationsRouteImport } from './routes/app.installations'
 import { Route as AppFinanceRouteImport } from './routes/app.finance'
 import { Route as AppDealsRouteImport } from './routes/app.deals'
@@ -47,9 +51,29 @@ const AppTasksRoute = AppTasksRouteImport.update({
   path: '/tasks',
   getParentRoute: () => AppRoute,
 } as any)
+const AppServiceRoute = AppServiceRouteImport.update({
+  id: '/service',
+  path: '/service',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppProductsRoute = AppProductsRouteImport.update({
   id: '/products',
   path: '/products',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOwnerRoute = AppOwnerRouteImport.update({
+  id: '/owner',
+  path: '/owner',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppObjectsRoute = AppObjectsRouteImport.update({
+  id: '/objects',
+  path: '/objects',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppInstallmentsRoute = AppInstallmentsRouteImport.update({
+  id: '/installments',
+  path: '/installments',
   getParentRoute: () => AppRoute,
 } as any)
 const AppInstallationsRoute = AppInstallationsRouteImport.update({
@@ -93,7 +117,11 @@ export interface FileRoutesByFullPath {
   '/app/deals': typeof AppDealsRoute
   '/app/finance': typeof AppFinanceRoute
   '/app/installations': typeof AppInstallationsRoute
+  '/app/installments': typeof AppInstallmentsRoute
+  '/app/objects': typeof AppObjectsRoute
+  '/app/owner': typeof AppOwnerRoute
   '/app/products': typeof AppProductsRoute
+  '/app/service': typeof AppServiceRoute
   '/app/tasks': typeof AppTasksRoute
   '/app/team': typeof AppTeamRoute
 }
@@ -107,7 +135,11 @@ export interface FileRoutesByTo {
   '/app/deals': typeof AppDealsRoute
   '/app/finance': typeof AppFinanceRoute
   '/app/installations': typeof AppInstallationsRoute
+  '/app/installments': typeof AppInstallmentsRoute
+  '/app/objects': typeof AppObjectsRoute
+  '/app/owner': typeof AppOwnerRoute
   '/app/products': typeof AppProductsRoute
+  '/app/service': typeof AppServiceRoute
   '/app/tasks': typeof AppTasksRoute
   '/app/team': typeof AppTeamRoute
 }
@@ -122,7 +154,11 @@ export interface FileRoutesById {
   '/app/deals': typeof AppDealsRoute
   '/app/finance': typeof AppFinanceRoute
   '/app/installations': typeof AppInstallationsRoute
+  '/app/installments': typeof AppInstallmentsRoute
+  '/app/objects': typeof AppObjectsRoute
+  '/app/owner': typeof AppOwnerRoute
   '/app/products': typeof AppProductsRoute
+  '/app/service': typeof AppServiceRoute
   '/app/tasks': typeof AppTasksRoute
   '/app/team': typeof AppTeamRoute
 }
@@ -138,7 +174,11 @@ export interface FileRouteTypes {
     | '/app/deals'
     | '/app/finance'
     | '/app/installations'
+    | '/app/installments'
+    | '/app/objects'
+    | '/app/owner'
     | '/app/products'
+    | '/app/service'
     | '/app/tasks'
     | '/app/team'
   fileRoutesByTo: FileRoutesByTo
@@ -152,7 +192,11 @@ export interface FileRouteTypes {
     | '/app/deals'
     | '/app/finance'
     | '/app/installations'
+    | '/app/installments'
+    | '/app/objects'
+    | '/app/owner'
     | '/app/products'
+    | '/app/service'
     | '/app/tasks'
     | '/app/team'
   id:
@@ -166,7 +210,11 @@ export interface FileRouteTypes {
     | '/app/deals'
     | '/app/finance'
     | '/app/installations'
+    | '/app/installments'
+    | '/app/objects'
+    | '/app/owner'
     | '/app/products'
+    | '/app/service'
     | '/app/tasks'
     | '/app/team'
   fileRoutesById: FileRoutesById
@@ -214,11 +262,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTasksRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/service': {
+      id: '/app/service'
+      path: '/service'
+      fullPath: '/app/service'
+      preLoaderRoute: typeof AppServiceRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/products': {
       id: '/app/products'
       path: '/products'
       fullPath: '/app/products'
       preLoaderRoute: typeof AppProductsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/owner': {
+      id: '/app/owner'
+      path: '/owner'
+      fullPath: '/app/owner'
+      preLoaderRoute: typeof AppOwnerRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/objects': {
+      id: '/app/objects'
+      path: '/objects'
+      fullPath: '/app/objects'
+      preLoaderRoute: typeof AppObjectsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/installments': {
+      id: '/app/installments'
+      path: '/installments'
+      fullPath: '/app/installments'
+      preLoaderRoute: typeof AppInstallmentsRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/installations': {
@@ -273,7 +349,11 @@ interface AppRouteChildren {
   AppDealsRoute: typeof AppDealsRoute
   AppFinanceRoute: typeof AppFinanceRoute
   AppInstallationsRoute: typeof AppInstallationsRoute
+  AppInstallmentsRoute: typeof AppInstallmentsRoute
+  AppObjectsRoute: typeof AppObjectsRoute
+  AppOwnerRoute: typeof AppOwnerRoute
   AppProductsRoute: typeof AppProductsRoute
+  AppServiceRoute: typeof AppServiceRoute
   AppTasksRoute: typeof AppTasksRoute
   AppTeamRoute: typeof AppTeamRoute
 }
@@ -285,7 +365,11 @@ const AppRouteChildren: AppRouteChildren = {
   AppDealsRoute: AppDealsRoute,
   AppFinanceRoute: AppFinanceRoute,
   AppInstallationsRoute: AppInstallationsRoute,
+  AppInstallmentsRoute: AppInstallmentsRoute,
+  AppObjectsRoute: AppObjectsRoute,
+  AppOwnerRoute: AppOwnerRoute,
   AppProductsRoute: AppProductsRoute,
+  AppServiceRoute: AppServiceRoute,
   AppTasksRoute: AppTasksRoute,
   AppTeamRoute: AppTeamRoute,
 }
