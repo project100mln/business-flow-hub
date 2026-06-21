@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { NotificationsBell } from "@/components/notifications-bell";
 import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/app")({
@@ -28,7 +29,8 @@ function AppLayout() {
           <header className="h-14 flex items-center gap-3 border-b border-border bg-surface/40 backdrop-blur px-4">
             <SidebarTrigger />
             <div className="h-5 w-px bg-border" />
-            <div className="text-sm text-muted-foreground">Система управления бизнесом</div>
+            <div className="text-sm text-muted-foreground flex-1">Система управления бизнесом</div>
+            <NotificationsBell />
           </header>
           <main className="flex-1 overflow-auto">
             <Outlet />
