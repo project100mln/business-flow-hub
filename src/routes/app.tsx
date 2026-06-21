@@ -29,7 +29,7 @@ function AppLayout() {
           <header className="h-14 flex items-center gap-3 border-b border-border bg-surface/40 backdrop-blur px-4">
             <SidebarTrigger />
             <div className="h-5 w-px bg-border" />
-            <div className="text-sm text-muted-foreground flex-1">Система управления бизнесом</div>
+            <div className="text-sm text-muted-foreground flex-1">PURE-HOME OS · Hyla, фильтры, воздухоочистители</div>
             <NotificationsBell />
           </header>
           <main className="flex-1 overflow-auto">
