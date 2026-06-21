@@ -116,12 +116,12 @@ function Dashboard() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={Users} label="Клиенты" value={fmt(data?.clients ?? 0)} hint="всего в базе" />
         <StatCard icon={Phone} label="Звонки" value={fmt(data?.calls ?? 0)} hint="всего совершено" />
-        <StatCard icon={Briefcase} label="Сделок" value={fmt(data?.dealsCount ?? 0)} hint={`закрыто на ${fmt(data?.wonAmount ?? 0)} ₽`} />
+        <StatCard icon={Briefcase} label="Сделок" value={fmt(data?.dealsCount ?? 0)} hint={`закрыто на ${fmt(data?.wonAmount ?? 0)} ₸`} />
         <StatCard icon={Wrench} label="Установки" value={fmt(data?.installs ?? 0)} hint={`${data?.scheduledInstalls ?? 0} запланированы`} />
         <StatCard icon={Boxes} label="Товары на складе" value={fmt(data?.stockTotal ?? 0)} hint="штук всего" />
-        <StatCard icon={TrendingUp} label="Доход" value={`${fmt(data?.income ?? 0)} ₽`} />
-        <StatCard icon={TrendingDown} label="Расход" value={`${fmt(data?.expense ?? 0)} ₽`} />
-        <StatCard icon={Wallet} label="Баланс" value={`${fmt(data?.balance ?? 0)} ₽`} />
+        <StatCard icon={TrendingUp} label="Доход" value={`${fmt(data?.income ?? 0)} ₸`} />
+        <StatCard icon={TrendingDown} label="Расход" value={`${fmt(data?.expense ?? 0)} ₸`} />
+        <StatCard icon={Wallet} label="Баланс" value={`${fmt(data?.balance ?? 0)} ₸`} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -139,7 +139,7 @@ function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="label" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                 <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(v) => `${(v/1000).toFixed(0)}к`} />
-                <Tooltip contentStyle={{ background: "hsl(var(--surface-elevated))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} formatter={(v: number) => `${fmt(v)} ₽`} />
+                <Tooltip contentStyle={{ background: "hsl(var(--surface-elevated))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} formatter={(v: number) => `${fmt(v)} ₸`} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Bar dataKey="Пылесосы" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
                 <Bar dataKey="Фильтры" fill="hsl(var(--accent-foreground))" radius={[6, 6, 0, 0]} />
@@ -152,7 +152,7 @@ function Dashboard() {
           <div className="flex items-end justify-between mb-4">
             <div>
               <div className="text-sm text-muted-foreground flex items-center gap-1.5"><Repeat className="size-3.5" />Прогноз повторных продаж</div>
-              <div className="text-lg font-semibold mt-0.5">{fmt(data?.forecastTotal ?? 0)} ₽</div>
+              <div className="text-lg font-semibold mt-0.5">{fmt(data?.forecastTotal ?? 0)} ₸</div>
             </div>
             <div className="text-xs text-muted-foreground">расходники, цикл 180 дн.</div>
           </div>
@@ -162,8 +162,8 @@ function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="label" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                 <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(v) => `${(v/1000).toFixed(0)}к`} />
-                <Tooltip contentStyle={{ background: "hsl(var(--surface-elevated))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} formatter={(v: number) => `${fmt(v)} ₽`} />
-                <Line type="monotone" dataKey="revenue" name="Прогноз ₽" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 4 }} />
+                <Tooltip contentStyle={{ background: "hsl(var(--surface-elevated))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} formatter={(v: number) => `${fmt(v)} ₸`} />
+                <Line type="monotone" dataKey="revenue" name="Прогноз ₸" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 4 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>

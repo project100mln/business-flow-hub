@@ -78,8 +78,8 @@ function Products() {
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
-                  <div><Label>Цена ₽</Label><Input type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} /></div>
-                  <div><Label>Себест. ₽</Label><Input type="number" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} /></div>
+                  <div><Label>Цена ₸</Label><Input type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} /></div>
+                  <div><Label>Себест. ₸</Label><Input type="number" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} /></div>
                   <div><Label>Остаток</Label><Input type="number" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} /></div>
                 </div>
                 <div><Label>Описание</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
@@ -107,7 +107,7 @@ function Products() {
                 <TableCell className="font-medium"><div className="flex items-center gap-2"><Boxes className="size-4 text-muted-foreground" />{p.name}</div></TableCell>
                 <TableCell><Badge variant="outline">{TYPES[p.type]}</Badge></TableCell>
                 <TableCell className="text-muted-foreground text-xs">{p.sku || "—"}</TableCell>
-                <TableCell className="text-right font-semibold">{new Intl.NumberFormat("ru-RU").format(Number(p.price))} ₽</TableCell>
+                <TableCell className="text-right font-semibold">{new Intl.NumberFormat("ru-RU").format(Number(p.price))} ₸</TableCell>
                 <TableCell className="text-right">
                   {isAdminOrManager ? (
                     <Input type="number" defaultValue={p.stock} onBlur={(e) => { const v = Number(e.target.value); if (v !== p.stock) updateStock.mutate({ id: p.id, stock: v }); }} className="w-20 ml-auto text-right h-8" />

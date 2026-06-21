@@ -10,7 +10,13 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/team")({ component: Team });
 
-const ROLES = [{ v: "admin", l: "Администратор" }, { v: "manager", l: "Менеджер" }, { v: "operator", l: "Оператор" }];
+const ROLES = [
+  { v: "admin", l: "Собственник" },
+  { v: "manager", l: "Менеджер" },
+  { v: "operator", l: "Колл-центр" },
+  { v: "installer", l: "Монтажник" },
+  { v: "finance", l: "Финансист" },
+];
 
 function Team() {
   const qc = useQueryClient();
