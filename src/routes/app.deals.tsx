@@ -80,7 +80,7 @@ function Deals() {
             <DialogHeader><DialogTitle>Новая сделка</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div><Label>Название *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Презентация Premium..." /></div>
-              <div><Label>Сумма, ₽</Label><Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></div>
+              <div><Label>Сумма, ₸</Label><Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></div>
               <div>
                 <Label>Клиент</Label>
                 <Select value={form.client_id} onValueChange={(v) => setForm({ ...form, client_id: v })}>
@@ -118,14 +118,14 @@ function Deals() {
                 <div className="text-sm font-medium">{s.label}</div>
                 <div className="text-xs text-muted-foreground">{items.length}</div>
               </div>
-              <div className="text-xs text-muted-foreground px-1 pt-1.5">{new Intl.NumberFormat("ru-RU").format(total)} ₽</div>
+              <div className="text-xs text-muted-foreground px-1 pt-1.5">{new Intl.NumberFormat("ru-RU").format(total)} ₸</div>
               <div className="mt-3 space-y-2">
                 {items.map((d: any) => (
                   <div key={d.id} className="rounded-lg border border-border bg-surface-elevated p-3 hover:border-border-strong transition">
                     <div className="text-sm font-medium truncate">{d.title}</div>
                     <div className="mt-1 text-xs text-muted-foreground truncate">{d.clients?.full_name || "—"} • {d.products?.name || "без товара"}</div>
                     <div className="mt-2 flex items-center justify-between">
-                      <div className="text-sm font-semibold">{new Intl.NumberFormat("ru-RU").format(Number(d.amount))} ₽</div>
+                      <div className="text-sm font-semibold">{new Intl.NumberFormat("ru-RU").format(Number(d.amount))} ₸</div>
                       <Select value={d.stage} onValueChange={(v) => move.mutate({ id: d.id, stage: v })}>
                         <SelectTrigger className="h-6 w-auto text-xs border-border"><SelectValue /></SelectTrigger>
                         <SelectContent>{STAGES.map((x) => <SelectItem key={x.value} value={x.value}>{x.label}</SelectItem>)}</SelectContent>

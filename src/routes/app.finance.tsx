@@ -76,7 +76,7 @@ function Finance() {
                   </SelectContent>
                 </Select>
               </div>
-              <div><Label>Сумма ₽ *</Label><Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></div>
+              <div><Label>Сумма ₸ *</Label><Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></div>
               <div><Label>Категория</Label><Input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="продажа, реклама, зарплата..." /></div>
               <div><Label>Описание</Label><Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
             </div>
@@ -88,15 +88,15 @@ function Finance() {
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-border bg-gradient-surface p-5 shadow-card">
           <div className="flex items-center justify-between"><div className="text-sm text-muted-foreground">Доход</div><TrendingUp className="size-4 text-success" /></div>
-          <div className="mt-3 text-2xl font-semibold text-success">{fmt(income)} ₽</div>
+          <div className="mt-3 text-2xl font-semibold text-success">{fmt(income)} ₸</div>
         </div>
         <div className="rounded-2xl border border-border bg-gradient-surface p-5 shadow-card">
           <div className="flex items-center justify-between"><div className="text-sm text-muted-foreground">Расход</div><TrendingDown className="size-4 text-destructive" /></div>
-          <div className="mt-3 text-2xl font-semibold text-destructive">{fmt(expense)} ₽</div>
+          <div className="mt-3 text-2xl font-semibold text-destructive">{fmt(expense)} ₸</div>
         </div>
         <div className="rounded-2xl border border-border bg-gradient-surface p-5 shadow-card">
           <div className="flex items-center justify-between"><div className="text-sm text-muted-foreground">Баланс</div><Wallet className="size-4 text-primary" /></div>
-          <div className="mt-3 text-2xl font-semibold">{fmt(income - expense)} ₽</div>
+          <div className="mt-3 text-2xl font-semibold">{fmt(income - expense)} ₸</div>
         </div>
       </div>
 
@@ -119,7 +119,7 @@ function Finance() {
                 <TableCell className="text-muted-foreground">{t.category || "—"}</TableCell>
                 <TableCell className="text-muted-foreground">{t.description || "—"}</TableCell>
                 <TableCell className={`text-right font-semibold ${t.type === "income" ? "text-success" : "text-destructive"}`}>
-                  {t.type === "income" ? "+" : "−"}{fmt(Number(t.amount))} ₽
+                  {t.type === "income" ? "+" : "−"}{fmt(Number(t.amount))} ₸
                 </TableCell>
               </TableRow>
             ))}
