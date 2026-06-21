@@ -132,7 +132,7 @@ function Installments() {
               const paid = (i.installment_payments || []).filter((p: any) => p.status === "paid").length;
               const total = (i.installment_payments || []).length;
               return (
-                <>
+                <Fragment key={i.id}>
                   <TableRow key={i.id}>
                     <TableCell className="font-medium">{i.clients?.full_name || "—"}</TableCell>
                     <TableCell>{fmt(Number(i.total_amount))} ₸</TableCell>
