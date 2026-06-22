@@ -118,6 +118,8 @@ export type Database = {
           id: string
           notes: string | null
           owner_id: string | null
+          paid_amount: number
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
           product_id: string | null
           stage: Database["public"]["Enums"]["deal_stage"]
           title: string
@@ -131,6 +133,8 @@ export type Database = {
           id?: string
           notes?: string | null
           owner_id?: string | null
+          paid_amount?: number
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
           product_id?: string | null
           stage?: Database["public"]["Enums"]["deal_stage"]
           title: string
@@ -144,6 +148,8 @@ export type Database = {
           id?: string
           notes?: string | null
           owner_id?: string | null
+          paid_amount?: number
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
           product_id?: string | null
           stage?: Database["public"]["Enums"]["deal_stage"]
           title?: string
@@ -681,6 +687,7 @@ export type Database = {
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
       notify_upcoming_cartridge_tasks: { Args: never; Returns: number }
+      refresh_installment_statuses: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "manager" | "operator" | "installer" | "finance"
@@ -711,6 +718,7 @@ export type Database = {
         | "cancelled"
         | "test"
         | "dismantled"
+      payment_method: "cash" | "transfer" | "installment"
       product_type: "vacuum" | "filter" | "accessory"
       task_status: "todo" | "in_progress" | "done"
       tx_type: "income" | "expense"
@@ -872,6 +880,7 @@ export const Constants = {
         "test",
         "dismantled",
       ],
+      payment_method: ["cash", "transfer", "installment"],
       product_type: ["vacuum", "filter", "accessory"],
       task_status: ["todo", "in_progress", "done"],
       tx_type: ["income", "expense"],
