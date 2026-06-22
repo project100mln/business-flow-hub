@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,10 +30,27 @@ function Finance() {
     enabled: isAdminOrManager,
     queryFn: async () => (await supabase.from("transactions").select("*").order("occurred_at", { ascending: false }).limit(200)).data ?? [],
   });
+  const { data: sales = [] } = useQuery({
+    queryKey: ["sales-finance"],
+    enabled: isAdminOrManager,
+    queryFn: async () => (await supabase.from("deals").select("amount, paid_amount, payment_method").eq("stage", "sale")).data ?? [],
+  });
+  const { data: payments = [] } = useQuery({
+    queryKey: ["installment-payments-finance"],
+    enabled: isAdminOrManager,
+    queryFn: async () => (await supabase.from("installment_payments").select("amount, status, due_date, paid_at")).data ?? [],
+  });
 
-  const income = txs.filter((t: any) => t.type === "income").reduce((s, t: any) => s + Number(t.amount), 0);
-  const expense = txs.filter((t: any) => t.type === "expense").reduce((s, t: any) => s + Number(t.amount), 0);
-  const fmt = (n: number) => new Intl.NumberFormat("ru-RU").format(n);
+  const income = txs.filter((t: any) => t.type === "income").reduce((s: number, t: any) => s + Number(t.amount), 0);
+  const expense = txs.filter((t: any) => t.type === "expense").reduce((s: number, t: any) => s + Number(t.amount), 0);
+  const revenue = sales.reduce((s: number, d: any) => s + Number(d.amount), 0);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const nextMonthStart = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+  const nextMonthEnd = new Date(today.getFullYear(), today.getMonth() + 2, 1);
+  const overdue = payments.filter((p: any) => p.status !== "paid" && new Date(p.due_date) < today).reduce((s: number, p: any) => s + Number(p.amount), 0);
+  const expectedNext = payments.filter((p: any) => p.status !== "paid" && new Date(p.due_date) >= nextMonthStart && new Date(p.due_date) < nextMonthEnd).reduce((s: number, p: any) => s + Number(p.amount), 0);
+  const debt = payments.filter((p: any) => p.status !== "paid").reduce((s: number, p: any) => s + Number(p.amount), 0);
+  const fmt = (n: number) => new Intl.NumberFormat("ru-RU").format(Math.round(n));
 
   const create = useMutation({
     mutationFn: async () => {
@@ -85,20 +102,15 @@ function Finance() {
         </Dialog>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-border bg-gradient-surface p-5 shadow-card">
-          <div className="flex items-center justify-between"><div className="text-sm text-muted-foreground">Доход</div><TrendingUp className="size-4 text-success" /></div>
-          <div className="mt-3 text-2xl font-semibold text-success">{fmt(income)} ₸</div>
-        </div>
-        <div className="rounded-2xl border border-border bg-gradient-surface p-5 shadow-card">
-          <div className="flex items-center justify-between"><div className="text-sm text-muted-foreground">Расход</div><TrendingDown className="size-4 text-destructive" /></div>
-          <div className="mt-3 text-2xl font-semibold text-destructive">{fmt(expense)} ₸</div>
-        </div>
-        <div className="rounded-2xl border border-border bg-gradient-surface p-5 shadow-card">
-          <div className="flex items-center justify-between"><div className="text-sm text-muted-foreground">Баланс</div><Wallet className="size-4 text-primary" /></div>
-          <div className="mt-3 text-2xl font-semibold">{fmt(income - expense)} ₸</div>
-        </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Kpi label="Общая выручка (продажи)" value={`${fmt(revenue)} ₸`} />
+        <Kpi label="Получено денег" value={`${fmt(income)} ₸`} accent="text-success" icon={<TrendingUp className="size-4 text-success" />} />
+        <Kpi label="Расходы" value={`${fmt(expense)} ₸`} accent="text-destructive" icon={<TrendingDown className="size-4 text-destructive" />} />
+        <Kpi label="Остаток долга клиентов" value={`${fmt(debt)} ₸`} />
+        <Kpi label="Просроченные платежи" value={`${fmt(overdue)} ₸`} accent={overdue > 0 ? "text-destructive" : ""} />
+        <Kpi label="Ожидается в след. месяце" value={`${fmt(expectedNext)} ₸`} icon={<Wallet className="size-4 text-primary" />} />
       </div>
+
 
       <div className="rounded-2xl border border-border bg-gradient-surface shadow-card overflow-hidden">
         <Table>
@@ -127,6 +139,15 @@ function Finance() {
           </TableBody>
         </Table>
       </div>
+    </div>
+  );
+}
+
+function Kpi({ label, value, accent, icon }: { label: string; value: string; accent?: string; icon?: ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-border bg-gradient-surface p-5 shadow-card">
+      <div className="flex items-center justify-between"><div className="text-sm text-muted-foreground">{label}</div>{icon}</div>
+      <div className={`mt-3 text-2xl font-semibold ${accent || ""}`}>{value}</div>
     </div>
   );
 }
