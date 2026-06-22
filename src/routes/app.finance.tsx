@@ -102,20 +102,15 @@ function Finance() {
         </Dialog>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-border bg-gradient-surface p-5 shadow-card">
-          <div className="flex items-center justify-between"><div className="text-sm text-muted-foreground">Доход</div><TrendingUp className="size-4 text-success" /></div>
-          <div className="mt-3 text-2xl font-semibold text-success">{fmt(income)} ₸</div>
-        </div>
-        <div className="rounded-2xl border border-border bg-gradient-surface p-5 shadow-card">
-          <div className="flex items-center justify-between"><div className="text-sm text-muted-foreground">Расход</div><TrendingDown className="size-4 text-destructive" /></div>
-          <div className="mt-3 text-2xl font-semibold text-destructive">{fmt(expense)} ₸</div>
-        </div>
-        <div className="rounded-2xl border border-border bg-gradient-surface p-5 shadow-card">
-          <div className="flex items-center justify-between"><div className="text-sm text-muted-foreground">Баланс</div><Wallet className="size-4 text-primary" /></div>
-          <div className="mt-3 text-2xl font-semibold">{fmt(income - expense)} ₸</div>
-        </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Kpi label="Общая выручка (продажи)" value={`${fmt(revenue)} ₸`} />
+        <Kpi label="Получено денег" value={`${fmt(income)} ₸`} accent="text-success" icon={<TrendingUp className="size-4 text-success" />} />
+        <Kpi label="Расходы" value={`${fmt(expense)} ₸`} accent="text-destructive" icon={<TrendingDown className="size-4 text-destructive" />} />
+        <Kpi label="Остаток долга клиентов" value={`${fmt(debt)} ₸`} />
+        <Kpi label="Просроченные платежи" value={`${fmt(overdue)} ₸`} accent={overdue > 0 ? "text-destructive" : ""} />
+        <Kpi label="Ожидается в след. месяце" value={`${fmt(expectedNext)} ₸`} icon={<Wallet className="size-4 text-primary" />} />
       </div>
+
 
       <div className="rounded-2xl border border-border bg-gradient-surface shadow-card overflow-hidden">
         <Table>
