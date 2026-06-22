@@ -698,7 +698,19 @@ export type Database = {
         | "installation"
         | "won"
         | "lost"
-      install_status: "scheduled" | "in_progress" | "completed" | "cancelled"
+        | "client"
+        | "test_install"
+        | "using"
+        | "decision"
+        | "dismantle"
+        | "sale"
+      install_status:
+        | "scheduled"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
+        | "test"
+        | "dismantled"
       product_type: "vacuum" | "filter" | "accessory"
       task_status: "todo" | "in_progress" | "done"
       tx_type: "income" | "expense"
@@ -845,8 +857,21 @@ export const Constants = {
         "installation",
         "won",
         "lost",
+        "client",
+        "test_install",
+        "using",
+        "decision",
+        "dismantle",
+        "sale",
       ],
-      install_status: ["scheduled", "in_progress", "completed", "cancelled"],
+      install_status: [
+        "scheduled",
+        "in_progress",
+        "completed",
+        "cancelled",
+        "test",
+        "dismantled",
+      ],
       product_type: ["vacuum", "filter", "accessory"],
       task_status: ["todo", "in_progress", "done"],
       tx_type: ["income", "expense"],
