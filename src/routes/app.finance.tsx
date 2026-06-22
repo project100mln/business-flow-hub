@@ -142,3 +142,12 @@ function Finance() {
     </div>
   );
 }
+
+function Kpi({ label, value, accent, icon }: { label: string; value: string; accent?: string; icon?: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-border bg-gradient-surface p-5 shadow-card">
+      <div className="flex items-center justify-between"><div className="text-sm text-muted-foreground">{label}</div>{icon}</div>
+      <div className={`mt-3 text-2xl font-semibold ${accent || ""}`}>{value}</div>
+    </div>
+  );
+}
