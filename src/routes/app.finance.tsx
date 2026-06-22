@@ -30,10 +30,27 @@ function Finance() {
     enabled: isAdminOrManager,
     queryFn: async () => (await supabase.from("transactions").select("*").order("occurred_at", { ascending: false }).limit(200)).data ?? [],
   });
+  const { data: sales = [] } = useQuery({
+    queryKey: ["sales-finance"],
+    enabled: isAdminOrManager,
+    queryFn: async () => (await supabase.from("deals").select("amount, paid_amount, payment_method").eq("stage", "sale")).data ?? [],
+  });
+  const { data: payments = [] } = useQuery({
+    queryKey: ["installment-payments-finance"],
+    enabled: isAdminOrManager,
+    queryFn: async () => (await supabase.from("installment_payments").select("amount, status, due_date, paid_at")).data ?? [],
+  });
 
-  const income = txs.filter((t: any) => t.type === "income").reduce((s, t: any) => s + Number(t.amount), 0);
-  const expense = txs.filter((t: any) => t.type === "expense").reduce((s, t: any) => s + Number(t.amount), 0);
-  const fmt = (n: number) => new Intl.NumberFormat("ru-RU").format(n);
+  const income = txs.filter((t: any) => t.type === "income").reduce((s: number, t: any) => s + Number(t.amount), 0);
+  const expense = txs.filter((t: any) => t.type === "expense").reduce((s: number, t: any) => s + Number(t.amount), 0);
+  const revenue = sales.reduce((s: number, d: any) => s + Number(d.amount), 0);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const nextMonthStart = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+  const nextMonthEnd = new Date(today.getFullYear(), today.getMonth() + 2, 1);
+  const overdue = payments.filter((p: any) => p.status !== "paid" && new Date(p.due_date) < today).reduce((s: number, p: any) => s + Number(p.amount), 0);
+  const expectedNext = payments.filter((p: any) => p.status !== "paid" && new Date(p.due_date) >= nextMonthStart && new Date(p.due_date) < nextMonthEnd).reduce((s: number, p: any) => s + Number(p.amount), 0);
+  const debt = payments.filter((p: any) => p.status !== "paid").reduce((s: number, p: any) => s + Number(p.amount), 0);
+  const fmt = (n: number) => new Intl.NumberFormat("ru-RU").format(Math.round(n));
 
   const create = useMutation({
     mutationFn: async () => {
