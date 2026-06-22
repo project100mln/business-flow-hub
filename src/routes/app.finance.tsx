@@ -143,7 +143,7 @@ function Finance() {
   );
 }
 
-function Kpi({ label, value, accent, icon }: { label: string; value: string; accent?: string; icon?: React.ReactNode }) {
+function Kpi({ label, value, accent, icon }: { label: string; value: string; accent?: string; icon?: ReactNode }) {
   return (
     <div className="rounded-2xl border border-border bg-gradient-surface p-5 shadow-card">
       <div className="flex items-center justify-between"><div className="text-sm text-muted-foreground">{label}</div>{icon}</div>
