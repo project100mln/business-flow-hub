@@ -1,5 +1,5 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
-import { LayoutDashboard, Phone, Users, Building2, Briefcase, ListChecks, Wrench, LifeBuoy, CreditCard, Boxes, Wallet, LogOut, UserCog, Crown } from "lucide-react";
+import { LayoutDashboard, Phone, Users, Building2, Briefcase, ListChecks, Wrench, LifeBuoy, CreditCard, Boxes, Wallet, LogOut, UserCog, Crown, Headphones, ClipboardList } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, useSidebar,
