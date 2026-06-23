@@ -49,7 +49,9 @@ export function AppSidebar() {
     operator: "Колл-центр",
     installer: "Монтажник",
     finance: "Финансист",
+    coordinator: "Координатор",
   };
+  void Phone;
 
   return (
     <Sidebar collapsible="icon">
