@@ -23,6 +23,7 @@ import { Route as AppInstallationsRouteImport } from './routes/app.installations
 import { Route as AppFinanceRouteImport } from './routes/app.finance'
 import { Route as AppDealsRouteImport } from './routes/app.deals'
 import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
+import { Route as AppCoordinatorRouteImport } from './routes/app.coordinator'
 import { Route as AppClientsRouteImport } from './routes/app.clients'
 import { Route as AppCallsRouteImport } from './routes/app.calls'
 
@@ -96,6 +97,11 @@ const AppDashboardRoute = AppDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCoordinatorRoute = AppCoordinatorRouteImport.update({
+  id: '/coordinator',
+  path: '/coordinator',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppClientsRoute = AppClientsRouteImport.update({
   id: '/clients',
   path: '/clients',
@@ -113,6 +119,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/app/calls': typeof AppCallsRoute
   '/app/clients': typeof AppClientsRoute
+  '/app/coordinator': typeof AppCoordinatorRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/deals': typeof AppDealsRoute
   '/app/finance': typeof AppFinanceRoute
@@ -131,6 +138,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/app/calls': typeof AppCallsRoute
   '/app/clients': typeof AppClientsRoute
+  '/app/coordinator': typeof AppCoordinatorRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/deals': typeof AppDealsRoute
   '/app/finance': typeof AppFinanceRoute
@@ -150,6 +158,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/app/calls': typeof AppCallsRoute
   '/app/clients': typeof AppClientsRoute
+  '/app/coordinator': typeof AppCoordinatorRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/deals': typeof AppDealsRoute
   '/app/finance': typeof AppFinanceRoute
@@ -170,6 +179,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/app/calls'
     | '/app/clients'
+    | '/app/coordinator'
     | '/app/dashboard'
     | '/app/deals'
     | '/app/finance'
@@ -188,6 +198,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/app/calls'
     | '/app/clients'
+    | '/app/coordinator'
     | '/app/dashboard'
     | '/app/deals'
     | '/app/finance'
@@ -206,6 +217,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/app/calls'
     | '/app/clients'
+    | '/app/coordinator'
     | '/app/dashboard'
     | '/app/deals'
     | '/app/finance'
@@ -325,6 +337,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDashboardRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/coordinator': {
+      id: '/app/coordinator'
+      path: '/coordinator'
+      fullPath: '/app/coordinator'
+      preLoaderRoute: typeof AppCoordinatorRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/clients': {
       id: '/app/clients'
       path: '/clients'
@@ -345,6 +364,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppCallsRoute: typeof AppCallsRoute
   AppClientsRoute: typeof AppClientsRoute
+  AppCoordinatorRoute: typeof AppCoordinatorRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppDealsRoute: typeof AppDealsRoute
   AppFinanceRoute: typeof AppFinanceRoute
@@ -361,6 +381,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppCallsRoute: AppCallsRoute,
   AppClientsRoute: AppClientsRoute,
+  AppCoordinatorRoute: AppCoordinatorRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppDealsRoute: AppDealsRoute,
   AppFinanceRoute: AppFinanceRoute,

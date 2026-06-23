@@ -14,6 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      call_history: {
+        Row: {
+          called_at: string
+          comment: string | null
+          contact_id: string | null
+          created_at: string
+          id: string
+          next_contact_at: string | null
+          next_step: string | null
+          operator_id: string | null
+          recording_url: string | null
+          result: Database["public"]["Enums"]["call_status"]
+        }
+        Insert: {
+          called_at?: string
+          comment?: string | null
+          contact_id?: string | null
+          created_at?: string
+          id?: string
+          next_contact_at?: string | null
+          next_step?: string | null
+          operator_id?: string | null
+          recording_url?: string | null
+          result: Database["public"]["Enums"]["call_status"]
+        }
+        Update: {
+          called_at?: string
+          comment?: string | null
+          contact_id?: string | null
+          created_at?: string
+          id?: string
+          next_contact_at?: string | null
+          next_step?: string | null
+          operator_id?: string | null
+          recording_url?: string | null
+          result?: Database["public"]["Enums"]["call_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_history_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "cold_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calls: {
         Row: {
           called_at: string
@@ -109,6 +156,62 @@ export type Database = {
         }
         Relationships: []
       }
+      cold_contacts: {
+        Row: {
+          added_by: string | null
+          assigned_operator: string | null
+          client_id: string | null
+          comment: string | null
+          contact_type: Database["public"]["Enums"]["contact_type"]
+          created_at: string
+          full_name: string
+          id: string
+          next_contact_at: string | null
+          phone: string
+          source: string | null
+          status: Database["public"]["Enums"]["call_status"]
+          updated_at: string
+        }
+        Insert: {
+          added_by?: string | null
+          assigned_operator?: string | null
+          client_id?: string | null
+          comment?: string | null
+          contact_type?: Database["public"]["Enums"]["contact_type"]
+          created_at?: string
+          full_name: string
+          id?: string
+          next_contact_at?: string | null
+          phone: string
+          source?: string | null
+          status?: Database["public"]["Enums"]["call_status"]
+          updated_at?: string
+        }
+        Update: {
+          added_by?: string | null
+          assigned_operator?: string | null
+          client_id?: string | null
+          comment?: string | null
+          contact_type?: Database["public"]["Enums"]["contact_type"]
+          created_at?: string
+          full_name?: string
+          id?: string
+          next_contact_at?: string | null
+          phone?: string
+          source?: string | null
+          status?: Database["public"]["Enums"]["call_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cold_contacts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deals: {
         Row: {
           amount: number
@@ -168,6 +271,90 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      install_requests: {
+        Row: {
+          address: string | null
+          client_id: string | null
+          client_name: string
+          contact_id: string | null
+          created_at: string
+          created_by: string | null
+          desired_at: string | null
+          district: string | null
+          equipment_type: string | null
+          geo_lat: number | null
+          geo_lng: number | null
+          id: string
+          master_id: string | null
+          master_response: Database["public"]["Enums"]["master_response"]
+          master_response_at: string | null
+          operator_comment: string | null
+          phone: string
+          sent_to_master_at: string | null
+          status: Database["public"]["Enums"]["install_request_status"]
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          client_id?: string | null
+          client_name: string
+          contact_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          desired_at?: string | null
+          district?: string | null
+          equipment_type?: string | null
+          geo_lat?: number | null
+          geo_lng?: number | null
+          id?: string
+          master_id?: string | null
+          master_response?: Database["public"]["Enums"]["master_response"]
+          master_response_at?: string | null
+          operator_comment?: string | null
+          phone: string
+          sent_to_master_at?: string | null
+          status?: Database["public"]["Enums"]["install_request_status"]
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          client_id?: string | null
+          client_name?: string
+          contact_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          desired_at?: string | null
+          district?: string | null
+          equipment_type?: string | null
+          geo_lat?: number | null
+          geo_lng?: number | null
+          id?: string
+          master_id?: string | null
+          master_response?: Database["public"]["Enums"]["master_response"]
+          master_response_at?: string | null
+          operator_comment?: string | null
+          phone?: string
+          sent_to_master_at?: string | null
+          status?: Database["public"]["Enums"]["install_request_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "install_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "install_requests_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "cold_contacts"
             referencedColumns: ["id"]
           },
         ]
@@ -690,7 +877,13 @@ export type Database = {
       refresh_installment_statuses: { Args: never; Returns: undefined }
     }
     Enums: {
-      app_role: "admin" | "manager" | "operator" | "installer" | "finance"
+      app_role:
+        | "admin"
+        | "manager"
+        | "operator"
+        | "installer"
+        | "finance"
+        | "coordinator"
       call_status:
         | "new"
         | "callback"
@@ -698,6 +891,7 @@ export type Database = {
         | "presentation_scheduled"
         | "sold"
         | "refused"
+      contact_type: "cold" | "recommendation" | "instagram" | "site" | "other"
       deal_stage:
         | "lead"
         | "presentation"
@@ -711,6 +905,15 @@ export type Database = {
         | "decision"
         | "dismantle"
         | "sale"
+      install_request_status:
+        | "new"
+        | "awaiting_master"
+        | "sent_to_master"
+        | "accepted"
+        | "rejected"
+        | "completed"
+        | "rescheduled"
+        | "cancelled"
       install_status:
         | "scheduled"
         | "in_progress"
@@ -718,6 +921,7 @@ export type Database = {
         | "cancelled"
         | "test"
         | "dismantled"
+      master_response: "pending" | "accepted" | "rejected" | "no_response"
       payment_method: "cash" | "transfer" | "installment"
       product_type: "vacuum" | "filter" | "accessory"
       task_status: "todo" | "in_progress" | "done"
@@ -849,7 +1053,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "manager", "operator", "installer", "finance"],
+      app_role: [
+        "admin",
+        "manager",
+        "operator",
+        "installer",
+        "finance",
+        "coordinator",
+      ],
       call_status: [
         "new",
         "callback",
@@ -858,6 +1069,7 @@ export const Constants = {
         "sold",
         "refused",
       ],
+      contact_type: ["cold", "recommendation", "instagram", "site", "other"],
       deal_stage: [
         "lead",
         "presentation",
@@ -872,6 +1084,16 @@ export const Constants = {
         "dismantle",
         "sale",
       ],
+      install_request_status: [
+        "new",
+        "awaiting_master",
+        "sent_to_master",
+        "accepted",
+        "rejected",
+        "completed",
+        "rescheduled",
+        "cancelled",
+      ],
       install_status: [
         "scheduled",
         "in_progress",
@@ -880,6 +1102,7 @@ export const Constants = {
         "test",
         "dismantled",
       ],
+      master_response: ["pending", "accepted", "rejected", "no_response"],
       payment_method: ["cash", "transfer", "installment"],
       product_type: ["vacuum", "filter", "accessory"],
       task_status: ["todo", "in_progress", "done"],
