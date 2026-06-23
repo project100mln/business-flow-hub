@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/use-auth";
 
 const salesItems = [
   { title: "Дашборд", url: "/app/dashboard", icon: LayoutDashboard },
-  { title: "Колл-центр", url: "/app/calls", icon: Phone },
+  { title: "База обзвона", url: "/app/calls", icon: Headphones },
   { title: "Клиенты", url: "/app/clients", icon: Users },
   { title: "Объекты (B2B)", url: "/app/objects", icon: Building2 },
   { title: "Продажи", url: "/app/deals", icon: Briefcase },
@@ -18,6 +18,7 @@ const salesItems = [
 ];
 
 const serviceItems = [
+  { title: "Заявки (Координатор)", url: "/app/coordinator", icon: ClipboardList },
   { title: "Установки", url: "/app/installations", icon: Wrench },
   { title: "Сервис", url: "/app/service", icon: LifeBuoy },
   { title: "Рассрочки", url: "/app/installments", icon: CreditCard },
