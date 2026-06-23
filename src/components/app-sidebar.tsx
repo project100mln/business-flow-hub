@@ -51,7 +51,7 @@ export function AppSidebar() {
     finance: "Финансист",
     coordinator: "Координатор",
   };
-  void Phone;
+  
 
   return (
     <Sidebar collapsible="icon">
