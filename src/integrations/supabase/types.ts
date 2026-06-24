@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
       call_history: {
         Row: {
           called_at: string
@@ -875,6 +896,8 @@ export type Database = {
       is_staff: { Args: { _user_id: string }; Returns: boolean }
       notify_upcoming_cartridge_tasks: { Args: never; Returns: number }
       refresh_installment_statuses: { Args: never; Returns: undefined }
+      set_access_pin: { Args: { _pin: string }; Returns: undefined }
+      verify_access_pin: { Args: { _pin: string }; Returns: boolean }
     }
     Enums: {
       app_role:
