@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_operator: {
+        Row: {
+          connection_status: string
+          created_at: string
+          daily_call_limit: number | null
+          id: string
+          name: string
+          phone_line: string | null
+          script: string | null
+          updated_at: string
+          updated_by: string | null
+          voice: string | null
+          work_hours: string | null
+        }
+        Insert: {
+          connection_status?: string
+          created_at?: string
+          daily_call_limit?: number | null
+          id?: string
+          name?: string
+          phone_line?: string | null
+          script?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          voice?: string | null
+          work_hours?: string | null
+        }
+        Update: {
+          connection_status?: string
+          created_at?: string
+          daily_call_limit?: number | null
+          id?: string
+          name?: string
+          phone_line?: string | null
+          script?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          voice?: string | null
+          work_hours?: string | null
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           key: string
@@ -886,6 +928,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_add_operator: {
+        Args: { _email: string; _name: string }
+        Returns: string
+      }
+      admin_assign_contacts: {
+        Args: { _ids: string[]; _operator: string }
+        Returns: number
+      }
+      admin_remove_operator: { Args: { _user_id: string }; Returns: undefined }
+      admin_rename_operator: {
+        Args: { _name: string; _user_id: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -894,6 +949,14 @@ export type Database = {
         Returns: boolean
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
+      list_operators: {
+        Args: never
+        Returns: {
+          contacts_count: number
+          full_name: string
+          user_id: string
+        }[]
+      }
       notify_upcoming_cartridge_tasks: { Args: never; Returns: number }
       refresh_installment_statuses: { Args: never; Returns: undefined }
       set_access_pin: { Args: { _pin: string }; Returns: undefined }
