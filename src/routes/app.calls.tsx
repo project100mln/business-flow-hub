@@ -7,12 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Upload, Phone as PhoneIcon, History, Trash2, Download, KeyRound } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Plus, Upload, Phone as PhoneIcon, History, Trash2, Download, KeyRound, Users, Bot, UserPlus, Pencil, Inbox, PhoneCall, XCircle, CheckCircle2, UserCog, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { parseContactsFile, maskPhone, exportContactsCsv } from "@/lib/call-base";
@@ -40,30 +40,42 @@ const STATUS_COLOR: Record<string, string> = {
 const TYPE: Record<string, string> = {
   cold: "Холодная база", recommendation: "Рекомендация", instagram: "Instagram", site: "Сайт", other: "Другое",
 };
+const AI_STATUS: Record<string, { label: string; cls: string }> = {
+  disconnected: { label: "Не подключен", cls: "bg-muted text-muted-foreground border-border" },
+  connecting: { label: "Подключается", cls: "bg-warning/15 text-warning border-warning/30" },
+  active: { label: "Активен", cls: "bg-success/15 text-success border-success/30" },
+  error: { label: "Ошибка", cls: "bg-destructive/15 text-destructive border-destructive/30" },
+};
+
+type View =
+  | { kind: "all" } | { kind: "unassigned" } | { kind: "operator"; id: string }
+  | { kind: "ai" } | { kind: "callbacks" } | { kind: "refusals" } | { kind: "installs" };
 
 function CallCenter() {
   const qc = useQueryClient();
-  const { hasRole } = useAuth();
-  const canManageBase = hasRole("admin");
-  const canViewFullPhone = hasRole("admin") || hasRole("coordinator");
+  const { hasRole, user } = useAuth();
+  const isAdmin = hasRole("admin");
+  const canManageBase = isAdmin;
+  const canSeeAll = isAdmin || hasRole("manager") || hasRole("coordinator");
+  const canViewFullPhone = isAdmin || hasRole("coordinator");
 
+  const [view, setView] = useState<View>({ kind: canSeeAll ? "all" : "operator", id: user?.id ?? "" } as View);
   const [open, setOpen] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState<string | null>(null);
   const [currentContact, setCurrentContact] = useState<any>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-
-  // PIN gate state
   const [pinOpen, setPinOpen] = useState(false);
   const [setPinOpenDlg, setSetPinOpenDlg] = useState(false);
   const pendingAction = useRef<null | (() => void)>(null);
   const [pinTitle, setPinTitle] = useState("");
+  const [opsOpen, setOpsOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [assignTo, setAssignTo] = useState<string>("");
 
   const requirePin = (title: string, run: () => void) => {
-    pendingAction.current = run;
-    setPinTitle(title);
-    setPinOpen(true);
+    pendingAction.current = run; setPinTitle(title); setPinOpen(true);
   };
 
   const [form, setForm] = useState({ full_name: "", phone: "", source: "", contact_type: "cold", comment: "" });
@@ -72,21 +84,65 @@ function CallCenter() {
   const { data: contacts = [] } = useQuery({
     queryKey: ["cold_contacts"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("cold_contacts").select("*").order("created_at", { ascending: false }).limit(500);
+      const { data, error } = await supabase.from("cold_contacts").select("*").order("created_at", { ascending: false }).limit(1000);
       if (error) throw error;
       return data;
     },
   });
 
+  const { data: operators = [] } = useQuery({
+    queryKey: ["operators"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("list_operators" as any);
+      if (error) throw error;
+      return (data ?? []) as { user_id: string; full_name: string | null; contacts_count: number }[];
+    },
+  });
+
+  const { data: ai } = useQuery({
+    queryKey: ["ai_operator"],
+    queryFn: async () => (await supabase.from("ai_operator" as any).select("*").limit(1).maybeSingle()).data as any,
+  });
+
   const { data: history = [] } = useQuery({
-    queryKey: ["call_history", historyOpen],
-    enabled: !!historyOpen,
+    queryKey: ["call_history", historyOpen], enabled: !!historyOpen,
     queryFn: async () => (await supabase.from("call_history").select("*").eq("contact_id", historyOpen!).order("called_at", { ascending: false })).data ?? [],
   });
 
+  const operatorName = (id: string | null) => {
+    if (!id) return "—";
+    const o = operators.find((x) => x.user_id === id);
+    return o?.full_name || id.slice(0, 6);
+  };
+
+  const filtered = useMemo(() => {
+    return contacts.filter((c: any) => {
+      if (!canSeeAll && c.assigned_operator !== user?.id) return false;
+      switch (view.kind) {
+        case "all": return true;
+        case "unassigned": return !c.assigned_operator;
+        case "operator": return c.assigned_operator === view.id;
+        case "ai": return false;
+        case "callbacks": return ["callback", "no_answer"].includes(c.status);
+        case "refusals": return c.status === "refused";
+        case "installs": return ["install_scheduled", "passed_to_coordinator"].includes(c.status);
+      }
+    });
+  }, [contacts, view, canSeeAll, user?.id]);
+
+  const counts = useMemo(() => {
+    const base = canSeeAll ? contacts : contacts.filter((c: any) => c.assigned_operator === user?.id);
+    return {
+      all: base.length,
+      unassigned: base.filter((c: any) => !c.assigned_operator).length,
+      callbacks: base.filter((c: any) => ["callback", "no_answer"].includes(c.status)).length,
+      refusals: base.filter((c: any) => c.status === "refused").length,
+      installs: base.filter((c: any) => ["install_scheduled", "passed_to_coordinator"].includes(c.status)).length,
+    };
+  }, [contacts, canSeeAll, user?.id]);
+
   const create = useMutation({
     mutationFn: async () => {
-      const user = (await supabase.auth.getUser()).data.user;
       const { error } = await supabase.from("cold_contacts").insert({
         full_name: form.full_name, phone: form.phone, source: form.source || null,
         contact_type: form.contact_type as any, comment: form.comment || null,
@@ -116,9 +172,21 @@ function CallCenter() {
       if (error) throw error;
     },
     onSuccess: (_d, ids) => {
-      toast.success(`Удалено: ${ids.length}`);
-      setSelected(new Set());
+      toast.success(`Удалено: ${ids.length}`); setSelected(new Set());
       qc.invalidateQueries({ queryKey: ["cold_contacts"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const assignMany = useMutation({
+    mutationFn: async ({ ids, op }: { ids: string[]; op: string | null }) => {
+      const { error } = await supabase.rpc("admin_assign_contacts" as any, { _ids: ids, _operator: op });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Контакты переназначены"); setSelected(new Set()); setAssignTo("");
+      qc.invalidateQueries({ queryKey: ["cold_contacts"] });
+      qc.invalidateQueries({ queryKey: ["operators"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -126,18 +194,14 @@ function CallCenter() {
   const logCall = useMutation({
     mutationFn: async () => {
       if (!currentContact) return;
-      const user = (await supabase.auth.getUser()).data.user;
       const { error: e1 } = await supabase.from("call_history").insert({
         contact_id: currentContact.id, operator_id: user?.id,
         result: callForm.result as any, comment: callForm.comment || null,
-        recording_url: callForm.recording_url || null,
-        next_step: callForm.next_step || null,
+        recording_url: callForm.recording_url || null, next_step: callForm.next_step || null,
         next_contact_at: callForm.next_contact_at || null,
       });
       if (e1) throw e1;
-
       const patch: any = { status: callForm.result, next_contact_at: callForm.next_contact_at || null };
-
       if (callForm.result === "install_scheduled") {
         const { data: client, error: ec } = await supabase.from("clients").insert({
           full_name: currentContact.full_name, phone: currentContact.phone,
@@ -145,25 +209,20 @@ function CallCenter() {
           notes: callForm.comment || null, created_by: user?.id, assigned_to: user?.id,
         }).select("id").single();
         if (ec) throw ec;
-        patch.client_id = client.id;
-        patch.status = "passed_to_coordinator";
-
+        patch.client_id = client.id; patch.status = "passed_to_coordinator";
         const { error: er } = await supabase.from("install_requests").insert({
           client_id: client.id, contact_id: currentContact.id,
           client_name: currentContact.full_name, phone: currentContact.phone,
           desired_at: callForm.next_contact_at || null,
-          operator_comment: callForm.comment || null,
-          status: "new", created_by: user?.id,
+          operator_comment: callForm.comment || null, status: "new", created_by: user?.id,
         });
         if (er) throw er;
       }
-
       const { error: e2 } = await supabase.from("cold_contacts").update(patch).eq("id", currentContact.id);
       if (e2) throw e2;
     },
     onSuccess: () => {
-      toast.success("Звонок сохранён");
-      setCallOpen(false); setCurrentContact(null);
+      toast.success("Звонок сохранён"); setCallOpen(false); setCurrentContact(null);
       setCallForm({ result: "connected", comment: "", recording_url: "", next_step: "", next_contact_at: "" });
       qc.invalidateQueries({ queryKey: ["cold_contacts"] });
       qc.invalidateQueries({ queryKey: ["install_requests"] });
@@ -175,17 +234,13 @@ function CallCenter() {
     try {
       const parsed = await parseContactsFile(file);
       if (!parsed.length) { toast.error("Нет валидных строк"); return; }
-      const user = (await supabase.auth.getUser()).data.user;
       const rows = parsed.map((r) => ({ ...r, added_by: user?.id, assigned_operator: user?.id }));
       const { error } = await supabase.from("cold_contacts").insert(rows as any);
       if (error) throw error;
       toast.success(`Импортировано: ${rows.length}`);
       qc.invalidateQueries({ queryKey: ["cold_contacts"] });
-    } catch (e: any) {
-      toast.error(e.message);
-    } finally {
-      if (fileRef.current) fileRef.current.value = "";
-    }
+    } catch (e: any) { toast.error(e.message); }
+    finally { if (fileRef.current) fileRef.current.value = ""; }
   };
 
   const handleExport = () => {
@@ -202,33 +257,38 @@ function CallCenter() {
     ? <a href={`tel:${c.phone}`} className="inline-flex items-center gap-1.5 hover:underline"><PhoneIcon className="size-3 text-muted-foreground" />{c.phone}</a>
     : <span className="inline-flex items-center gap-1.5 text-muted-foreground"><PhoneIcon className="size-3" />{maskPhone(c.phone)}</span>;
 
-  const tabs = useMemo(() => ["all", "queue", "callback"] as const, []);
+  const NavBtn = ({ active, onClick, icon: Icon, label, count }: any) => (
+    <button onClick={onClick} className={cn(
+      "w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm transition-colors text-left",
+      active ? "bg-primary/10 text-primary border border-primary/30" : "hover:bg-muted text-foreground/80 border border-transparent"
+    )}>
+      <span className="inline-flex items-center gap-2"><Icon className="size-4" />{label}</span>
+      {count !== undefined && <span className="text-xs text-muted-foreground">{count}</span>}
+    </button>
+  );
 
   return (
-    <div className="p-6 md:p-8 space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+    <div className="p-6 md:p-8">
+      <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">База обзвона</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Холодные контакты, рекомендации и история звонков.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Управление контактами, операторами и AI-обзвоном.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {canManageBase && (
             <>
               <input ref={fileRef} type="file" accept=".csv,.txt,.xlsx,.xls,.docx" className="hidden"
                 onChange={(e) => e.target.files?.[0] && handleImport(e.target.files[0])} />
-              <Button variant="outline" onClick={() => requirePin("Импорт базы контактов", () => fileRef.current?.click())}>
+              <Button variant="outline" onClick={() => requirePin("Импорт базы", () => fileRef.current?.click())}>
                 <Upload className="size-4 mr-1" />Импорт
               </Button>
               <Button variant="outline" onClick={() => requirePin("Экспорт базы", handleExport)}>
                 <Download className="size-4 mr-1" />Экспорт
               </Button>
-              {selected.size > 0 && (
-                <Button variant="outline" className="text-destructive border-destructive/40"
-                  onClick={() => requirePin(`Массовое удаление: ${selected.size}`, () => deleteMany.mutate([...selected]))}>
-                  <Trash2 className="size-4 mr-1" />Удалить ({selected.size})
-                </Button>
-              )}
-              <Button variant="ghost" size="icon" title="Установить PIN" onClick={() => setSetPinOpenDlg(true)}>
+              <Button variant="outline" onClick={() => setOpsOpen(true)}>
+                <UserCog className="size-4 mr-1" />Операторы
+              </Button>
+              <Button variant="ghost" size="icon" title="PIN" onClick={() => setSetPinOpenDlg(true)}>
                 <KeyRound className="size-4" />
               </Button>
             </>
@@ -247,7 +307,7 @@ function CallCenter() {
                     <SelectContent>{Object.entries(TYPE).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
-                <div><Label>Источник контакта</Label><Input value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} /></div>
+                <div><Label>Источник</Label><Input value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} /></div>
                 <div><Label>Комментарий</Label><Textarea value={form.comment} onChange={(e) => setForm({ ...form, comment: e.target.value })} /></div>
               </div>
               <DialogFooter><Button onClick={() => create.mutate()} disabled={!form.full_name || !form.phone || create.isPending} className="bg-gradient-primary">Сохранить</Button></DialogFooter>
@@ -256,39 +316,74 @@ function CallCenter() {
         </div>
       </div>
 
-      <Tabs defaultValue="all">
-        <TabsList>
-          <TabsTrigger value="all">Все ({contacts.length})</TabsTrigger>
-          <TabsTrigger value="queue">В работе</TabsTrigger>
-          <TabsTrigger value="callback">Перезвон</TabsTrigger>
-        </TabsList>
-        {tabs.map((tab) => {
-          const filtered = contacts.filter((c: any) => {
-            if (tab === "all") return true;
-            if (tab === "queue") return ["new", "queued", "connected", "interested"].includes(c.status);
-            if (tab === "callback") return ["callback", "no_answer"].includes(c.status);
-            return true;
-          });
-          const allSelected = filtered.length > 0 && filtered.every((c: any) => selected.has(c.id));
-          return (
-            <TabsContent key={tab} value={tab}>
+      <div className="grid gap-6 lg:grid-cols-[260px,1fr]">
+        <aside className="space-y-1 rounded-2xl border border-border bg-gradient-surface p-3 shadow-card h-fit">
+          {canSeeAll && <NavBtn active={view.kind === "all"} onClick={() => setView({ kind: "all" })} icon={Inbox} label="Все контакты" count={counts.all} />}
+          {canSeeAll && <NavBtn active={view.kind === "unassigned"} onClick={() => setView({ kind: "unassigned" })} icon={Users} label="Не назначенные" count={counts.unassigned} />}
+          {canSeeAll && (
+            <div className="pt-2 pb-1 px-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Операторы</div>
+          )}
+          {canSeeAll && operators.map((o) => (
+            <NavBtn key={o.user_id} active={view.kind === "operator" && view.id === o.user_id}
+              onClick={() => setView({ kind: "operator", id: o.user_id })}
+              icon={UserCog} label={o.full_name || "Без имени"} count={Number(o.contacts_count)} />
+          ))}
+          {!canSeeAll && user?.id && (
+            <NavBtn active={view.kind === "operator" && view.id === user.id}
+              onClick={() => setView({ kind: "operator", id: user.id })}
+              icon={UserCog} label="Мои контакты" count={counts.all} />
+          )}
+          <NavBtn active={view.kind === "ai"} onClick={() => setView({ kind: "ai" })} icon={Bot} label="AI оператор" />
+          <div className="pt-2 pb-1 px-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Подборки</div>
+          <NavBtn active={view.kind === "callbacks"} onClick={() => setView({ kind: "callbacks" })} icon={PhoneCall} label="Перезвоны" count={counts.callbacks} />
+          <NavBtn active={view.kind === "refusals"} onClick={() => setView({ kind: "refusals" })} icon={XCircle} label="Отказы" count={counts.refusals} />
+          <NavBtn active={view.kind === "installs"} onClick={() => setView({ kind: "installs" })} icon={CheckCircle2} label="Назначенные установки" count={counts.installs} />
+        </aside>
+
+        <section className="space-y-4">
+          {view.kind === "ai" ? (
+            <AiOperatorPanel ai={ai} isAdmin={isAdmin} onEdit={() => setAiOpen(true)} />
+          ) : (
+            <>
+              {canManageBase && selected.size > 0 && (
+                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/40 p-3">
+                  <span className="text-sm">Выбрано: {selected.size}</span>
+                  <Select value={assignTo} onValueChange={setAssignTo}>
+                    <SelectTrigger className="w-56"><SelectValue placeholder="Назначить оператору…" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">— Снять назначение —</SelectItem>
+                      {operators.map((o) => <SelectItem key={o.user_id} value={o.user_id}>{o.full_name || o.user_id.slice(0, 6)}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Button size="sm" disabled={!assignTo || assignMany.isPending}
+                    onClick={() => assignMany.mutate({ ids: [...selected], op: assignTo === "__none__" ? null : assignTo })}>
+                    Назначить
+                  </Button>
+                  <Button size="sm" variant="outline" className="text-destructive border-destructive/40"
+                    onClick={() => requirePin(`Удалить: ${selected.size}`, () => deleteMany.mutate([...selected]))}>
+                    <Trash2 className="size-4 mr-1" />Удалить
+                  </Button>
+                </div>
+              )}
+
               <div className="rounded-2xl border border-border bg-gradient-surface shadow-card overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       {canManageBase && (
                         <TableHead className="w-8">
-                          <Checkbox checked={allSelected} onCheckedChange={(v) => {
-                            const next = new Set(selected);
-                            filtered.forEach((c: any) => v ? next.add(c.id) : next.delete(c.id));
-                            setSelected(next);
-                          }} />
+                          <Checkbox checked={filtered.length > 0 && filtered.every((c: any) => selected.has(c.id))}
+                            onCheckedChange={(v) => {
+                              const next = new Set(selected);
+                              filtered.forEach((c: any) => v ? next.add(c.id) : next.delete(c.id));
+                              setSelected(next);
+                            }} />
                         </TableHead>
                       )}
                       <TableHead>ФИО</TableHead>
                       <TableHead>Телефон</TableHead>
                       <TableHead>Тип</TableHead>
-                      <TableHead>Источник</TableHead>
+                      <TableHead>Оператор</TableHead>
                       <TableHead>Статус</TableHead>
                       <TableHead>Добавлен</TableHead>
                       <TableHead className="text-right">Действия</TableHead>
@@ -309,7 +404,7 @@ function CallCenter() {
                         <TableCell className="font-medium">{c.full_name}</TableCell>
                         <TableCell>{renderPhone(c)}</TableCell>
                         <TableCell className="text-muted-foreground text-xs">{TYPE[c.contact_type]}</TableCell>
-                        <TableCell className="text-muted-foreground text-xs max-w-[180px] truncate">{c.source || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground text-xs">{operatorName(c.assigned_operator)}</TableCell>
                         <TableCell>
                           <Select value={c.status} onValueChange={(v) => updateStatus.mutate({ id: c.id, status: v })}>
                             <SelectTrigger className="w-auto h-7 border-0 p-0 bg-transparent [&>svg]:hidden">
@@ -326,12 +421,6 @@ function CallCenter() {
                           <Button size="sm" variant="ghost" onClick={() => setHistoryOpen(c.id)}>
                             <History className="size-3" />
                           </Button>
-                          {canManageBase && (
-                            <Button size="sm" variant="ghost" className="text-destructive"
-                              onClick={() => requirePin(`Удалить: ${c.full_name}`, () => deleteMany.mutate([c.id]))}>
-                              <Trash2 className="size-3" />
-                            </Button>
-                          )}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -339,14 +428,14 @@ function CallCenter() {
                   </TableBody>
                 </Table>
               </div>
-            </TabsContent>
-          );
-        })}
-      </Tabs>
+            </>
+          )}
+        </section>
+      </div>
 
       <Dialog open={callOpen} onOpenChange={setCallOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Результат звонка: {currentContact?.full_name}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Результат: {currentContact?.full_name}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div>
               <Label>Результат *</Label>
@@ -358,12 +447,7 @@ function CallCenter() {
             <div><Label>Комментарий</Label><Textarea value={callForm.comment} onChange={(e) => setCallForm({ ...callForm, comment: e.target.value })} /></div>
             <div><Label>Ссылка на запись</Label><Input value={callForm.recording_url} onChange={(e) => setCallForm({ ...callForm, recording_url: e.target.value })} placeholder="https://..." /></div>
             <div><Label>Следующий шаг</Label><Input value={callForm.next_step} onChange={(e) => setCallForm({ ...callForm, next_step: e.target.value })} /></div>
-            <div><Label>Дата следующего контакта {callForm.result === "install_scheduled" && "(дата установки) *"}</Label><Input type="datetime-local" value={callForm.next_contact_at} onChange={(e) => setCallForm({ ...callForm, next_contact_at: e.target.value })} /></div>
-            {callForm.result === "install_scheduled" && (
-              <p className="text-xs text-muted-foreground p-2 rounded bg-success/10 border border-success/20">
-                ✓ Будет создана карточка клиента и заявка для координатора.
-              </p>
-            )}
+            <div><Label>Дата следующего контакта{callForm.result === "install_scheduled" && " (дата установки) *"}</Label><Input type="datetime-local" value={callForm.next_contact_at} onChange={(e) => setCallForm({ ...callForm, next_contact_at: e.target.value })} /></div>
           </div>
           <DialogFooter><Button onClick={() => logCall.mutate()} disabled={logCall.isPending} className="bg-gradient-primary">Сохранить</Button></DialogFooter>
         </DialogContent>
@@ -381,17 +465,225 @@ function CallCenter() {
                   <span className="text-muted-foreground">{new Date(h.called_at).toLocaleString("ru-RU")}</span>
                 </div>
                 {h.comment && <p className="text-sm">{h.comment}</p>}
-                {h.next_step && <p className="text-xs text-muted-foreground">След. шаг: {h.next_step}{h.next_contact_at && ` — ${new Date(h.next_contact_at).toLocaleString("ru-RU")}`}</p>}
-                {h.recording_url && <a href={h.recording_url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">Запись звонка ↗</a>}
+                {h.next_step && <p className="text-xs text-muted-foreground">След.: {h.next_step}{h.next_contact_at && ` — ${new Date(h.next_contact_at).toLocaleString("ru-RU")}`}</p>}
+                {h.recording_url && <a href={h.recording_url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">Запись ↗</a>}
               </div>
             ))}
           </div>
         </DialogContent>
       </Dialog>
 
+      <OperatorsDialog open={opsOpen} onOpenChange={setOpsOpen} operators={operators} />
+      <AiOperatorDialog open={aiOpen} onOpenChange={setAiOpen} ai={ai} />
+
       <PinGateDialog open={pinOpen} onOpenChange={setPinOpen} title={pinTitle}
         onSuccess={() => { pendingAction.current?.(); pendingAction.current = null; }} />
       <SetPinDialog open={setPinOpenDlg} onOpenChange={setSetPinOpenDlg} />
     </div>
+  );
+}
+
+function AiOperatorPanel({ ai, isAdmin, onEdit }: { ai: any; isAdmin: boolean; onEdit: () => void }) {
+  const s = ai?.connection_status ?? "disconnected";
+  const st = AI_STATUS[s] ?? AI_STATUS.disconnected;
+  return (
+    <div className="rounded-2xl border border-border bg-gradient-surface shadow-card p-6 space-y-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="size-12 rounded-xl bg-primary/10 flex items-center justify-center"><Bot className="size-6 text-primary" /></div>
+          <div>
+            <h2 className="text-lg font-semibold">{ai?.name || "AI Оператор"}</h2>
+            <Badge variant="outline" className={st.cls}>{st.label}</Badge>
+          </div>
+        </div>
+        {isAdmin && <Button variant="outline" onClick={onEdit}><Settings className="size-4 mr-1" />Настроить</Button>}
+      </div>
+      <div className="grid sm:grid-cols-2 gap-3 text-sm">
+        <Field label="Телефонная линия" value={ai?.phone_line} />
+        <Field label="Голос" value={ai?.voice} />
+        <Field label="Рабочее время" value={ai?.work_hours} />
+        <Field label="Лимит звонков в день" value={ai?.daily_call_limit ? String(ai.daily_call_limit) : null} />
+        <div className="sm:col-span-2">
+          <div className="text-xs text-muted-foreground mb-1">Скрипт звонка</div>
+          <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm whitespace-pre-wrap min-h-[80px]">{ai?.script || "—"}</div>
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground border-t border-border pt-3">
+        Раздел в разработке. После подключения телефонии AI-оператор будет самостоятельно обзванивать контакты по расписанию.
+      </p>
+    </div>
+  );
+}
+
+function Field({ label, value }: { label: string; value?: string | null }) {
+  return (
+    <div>
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="text-sm">{value || "—"}</div>
+    </div>
+  );
+}
+
+function OperatorsDialog({ open, onOpenChange, operators }: { open: boolean; onOpenChange: (v: boolean) => void; operators: any[] }) {
+  const qc = useQueryClient();
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [editing, setEditing] = useState<{ id: string; name: string } | null>(null);
+
+  const add = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc("admin_add_operator" as any, { _email: email, _name: name });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Оператор добавлен"); setEmail(""); setName("");
+      qc.invalidateQueries({ queryKey: ["operators"] });
+    },
+    onError: (e: Error) => toast.error(e.message === "user_not_found" ? "Пользователь с таким email не найден. Сначала зарегистрируйте его." : e.message),
+  });
+
+  const rename = useMutation({
+    mutationFn: async () => {
+      if (!editing) return;
+      const { error } = await supabase.rpc("admin_rename_operator" as any, { _user_id: editing.id, _name: editing.name });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Имя обновлено"); setEditing(null);
+      qc.invalidateQueries({ queryKey: ["operators"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.rpc("admin_remove_operator" as any, { _user_id: id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Оператор удалён");
+      qc.invalidateQueries({ queryKey: ["operators"] });
+      qc.invalidateQueries({ queryKey: ["cold_contacts"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Управление операторами</DialogTitle>
+          <DialogDescription>Назначение роли «Оператор» зарегистрированным сотрудникам.</DialogDescription>
+        </DialogHeader>
+        <div className="rounded-lg border border-border p-3 space-y-2 bg-muted/30">
+          <div className="text-sm font-medium flex items-center gap-1.5"><UserPlus className="size-4" />Добавить оператора</div>
+          <div className="grid sm:grid-cols-[1fr,1fr,auto] gap-2">
+            <Input placeholder="Email сотрудника" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Input placeholder="Имя (необязательно)" value={name} onChange={(e) => setName(e.target.value)} />
+            <Button onClick={() => add.mutate()} disabled={!email || add.isPending}>Добавить</Button>
+          </div>
+          <p className="text-xs text-muted-foreground">Сотрудник должен быть уже зарегистрирован в системе.</p>
+        </div>
+        <div className="rounded-lg border border-border overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow><TableHead>Имя</TableHead><TableHead>Контактов</TableHead><TableHead className="text-right">Действия</TableHead></TableRow>
+            </TableHeader>
+            <TableBody>
+              {operators.map((o) => (
+                <TableRow key={o.user_id}>
+                  <TableCell>
+                    {editing?.id === o.user_id ? (
+                      <div className="flex gap-1">
+                        <Input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} className="h-8" />
+                        <Button size="sm" onClick={() => rename.mutate()} disabled={rename.isPending}>OK</Button>
+                        <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>×</Button>
+                      </div>
+                    ) : (
+                      <span className="font-medium">{o.full_name || "Без имени"}</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{Number(o.contacts_count)}</TableCell>
+                  <TableCell className="text-right space-x-1">
+                    <Button size="sm" variant="ghost" onClick={() => setEditing({ id: o.user_id, name: o.full_name || "" })}>
+                      <Pencil className="size-3" />
+                    </Button>
+                    <Button size="sm" variant="ghost" className="text-destructive"
+                      onClick={() => { if (confirm("Снять роль оператора? Контакты будут не назначены.")) remove.mutate(o.user_id); }}>
+                      <Trash2 className="size-3" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {operators.length === 0 && <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-6">Операторов нет</TableCell></TableRow>}
+            </TableBody>
+          </Table>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AiOperatorDialog({ open, onOpenChange, ai }: { open: boolean; onOpenChange: (v: boolean) => void; ai: any }) {
+  const qc = useQueryClient();
+  const [f, setF] = useState<any>({});
+  const data = { ...(ai ?? {}), ...f };
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const payload = {
+        name: data.name, phone_line: data.phone_line, script: data.script,
+        voice: data.voice, work_hours: data.work_hours,
+        daily_call_limit: data.daily_call_limit ? Number(data.daily_call_limit) : null,
+        connection_status: data.connection_status || "disconnected",
+      };
+      if (ai?.id) {
+        const { error } = await supabase.from("ai_operator" as any).update(payload).eq("id", ai.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("ai_operator" as any).insert(payload);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success("AI-оператор сохранён"); setF({}); onOpenChange(false);
+      qc.invalidateQueries({ queryKey: ["ai_operator"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-xl">
+        <DialogHeader><DialogTitle>Настройка AI-оператора</DialogTitle></DialogHeader>
+        <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
+          <div><Label>Название</Label><Input value={data.name ?? ""} onChange={(e) => setF({ ...f, name: e.target.value })} /></div>
+          <div><Label>Телефонная линия</Label><Input value={data.phone_line ?? ""} onChange={(e) => setF({ ...f, phone_line: e.target.value })} placeholder="+7 ..." /></div>
+          <div><Label>Голос</Label>
+            <Select value={data.voice ?? "female_ru"} onValueChange={(v) => setF({ ...f, voice: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="female_ru">Женский (RU)</SelectItem>
+                <SelectItem value="male_ru">Мужской (RU)</SelectItem>
+                <SelectItem value="female_kz">Женский (KZ)</SelectItem>
+                <SelectItem value="male_kz">Мужской (KZ)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div><Label>Рабочее время</Label><Input value={data.work_hours ?? ""} onChange={(e) => setF({ ...f, work_hours: e.target.value })} placeholder="09:00-18:00" /></div>
+          <div><Label>Лимит звонков в день</Label><Input type="number" value={data.daily_call_limit ?? ""} onChange={(e) => setF({ ...f, daily_call_limit: e.target.value })} /></div>
+          <div><Label>Скрипт звонка</Label><Textarea rows={6} value={data.script ?? ""} onChange={(e) => setF({ ...f, script: e.target.value })} /></div>
+          <div><Label>Статус подключения</Label>
+            <Select value={data.connection_status ?? "disconnected"} onValueChange={(v) => setF({ ...f, connection_status: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(AI_STATUS).map(([v, s]) => <SelectItem key={v} value={v}>{s.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter><Button onClick={() => save.mutate()} disabled={save.isPending} className="bg-gradient-primary">Сохранить</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
