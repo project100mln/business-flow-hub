@@ -593,7 +593,7 @@ function OperatorsDialog({ open, onOpenChange, operators }: { open: boolean; onO
               {operators.map((o) => (
                 <TableRow key={o.user_id}>
                   <TableCell>
-                    {editing?.id === o.user_id ? (
+                    {editing && editing.id === o.user_id ? (
                       <div className="flex gap-1">
                         <Input value={editing.name} onChange={(e) => setEditing((p) => p ? { ...p, name: e.target.value } : p)} className="h-8" />
                         <Button size="sm" onClick={() => rename.mutate()} disabled={rename.isPending}>OK</Button>
