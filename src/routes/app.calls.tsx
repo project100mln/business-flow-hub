@@ -204,7 +204,7 @@ function CallCenter() {
     onSuccess: () => {
       toast.success("Контакт добавлен"); setOpen(false);
       setForm({ full_name: "", phone: "", source: "", contact_type: "cold", comment: "" });
-      qc.invalidateQueries({ queryKey: ["cold_contacts"] });
+      qc.invalidateQueries({ queryKey: ["cold_contacts_paged"] }); qc.invalidateQueries({ queryKey: ["cold_contacts_counts"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -224,7 +224,7 @@ function CallCenter() {
     },
     onSuccess: (_d, ids) => {
       toast.success(`Удалено: ${ids.length}`); setSelected(new Set());
-      qc.invalidateQueries({ queryKey: ["cold_contacts"] });
+      qc.invalidateQueries({ queryKey: ["cold_contacts_paged"] }); qc.invalidateQueries({ queryKey: ["cold_contacts_counts"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -236,7 +236,7 @@ function CallCenter() {
     },
     onSuccess: () => {
       toast.success("Контакты переназначены"); setSelected(new Set()); setAssignTo("");
-      qc.invalidateQueries({ queryKey: ["cold_contacts"] });
+      qc.invalidateQueries({ queryKey: ["cold_contacts_paged"] }); qc.invalidateQueries({ queryKey: ["cold_contacts_counts"] });
       qc.invalidateQueries({ queryKey: ["operators"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -275,7 +275,7 @@ function CallCenter() {
     onSuccess: () => {
       toast.success("Звонок сохранён"); setCallOpen(false); setCurrentContact(null);
       setCallForm({ result: "connected", comment: "", recording_url: "", next_step: "", next_contact_at: "" });
-      qc.invalidateQueries({ queryKey: ["cold_contacts"] });
+      qc.invalidateQueries({ queryKey: ["cold_contacts_paged"] }); qc.invalidateQueries({ queryKey: ["cold_contacts_counts"] });
       qc.invalidateQueries({ queryKey: ["install_requests"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -289,7 +289,7 @@ function CallCenter() {
       const { error } = await supabase.from("cold_contacts").insert(rows as any);
       if (error) throw error;
       toast.success(`Импортировано: ${rows.length}`);
-      qc.invalidateQueries({ queryKey: ["cold_contacts"] });
+      qc.invalidateQueries({ queryKey: ["cold_contacts_paged"] }); qc.invalidateQueries({ queryKey: ["cold_contacts_counts"] });
     } catch (e: any) { toast.error(e.message); }
     finally { if (fileRef.current) fileRef.current.value = ""; }
   };
@@ -621,7 +621,7 @@ function OperatorsDialog({ open, onOpenChange, operators }: { open: boolean; onO
     onSuccess: () => {
       toast.success("Оператор удалён");
       qc.invalidateQueries({ queryKey: ["operators"] });
-      qc.invalidateQueries({ queryKey: ["cold_contacts"] });
+      qc.invalidateQueries({ queryKey: ["cold_contacts_paged"] }); qc.invalidateQueries({ queryKey: ["cold_contacts_counts"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
