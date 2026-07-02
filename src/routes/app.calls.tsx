@@ -214,7 +214,26 @@ function CallCenter() {
       const { error } = await supabase.from("cold_contacts").update({ status: status as any }).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["cold_contacts"] }),
+    onMutate: async ({ id, status }) => {
+      // Optimistic: patch only that row in the paged cache — no full refetch, no re-render storm.
+      qc.setQueriesData<any>({ queryKey: ["cold_contacts_paged"] }, (old: any) => {
+        if (!old?.pages) return old;
+        return {
+          ...old,
+          pages: old.pages.map((p: any) => ({
+            ...p,
+            rows: p.rows.map((r: any) => (r.id === id ? { ...r, status } : r)),
+          })),
+        };
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["cold_contacts_counts"] });
+    },
+    onError: (e: Error) => {
+      toast.error(e.message);
+      qc.invalidateQueries({ queryKey: ["cold_contacts_paged"] });
+    },
   });
 
   const deleteMany = useMutation({
