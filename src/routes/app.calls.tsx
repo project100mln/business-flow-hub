@@ -541,6 +541,168 @@ function CallCenter() {
   );
 }
 
+// ─── Virtualized contacts table ─────────────────────────────────────────────
+
+const GRID_WITH_CHECK = "grid-cols-[40px_minmax(160px,1.6fr)_minmax(140px,1.3fr)_minmax(110px,1fr)_minmax(120px,1.1fr)_minmax(150px,1.3fr)_minmax(100px,0.9fr)_minmax(160px,1.2fr)]";
+const GRID_NO_CHECK   = "grid-cols-[minmax(160px,1.6fr)_minmax(140px,1.3fr)_minmax(110px,1fr)_minmax(120px,1.1fr)_minmax(150px,1.3fr)_minmax(100px,0.9fr)_minmax(160px,1.2fr)]";
+
+type RowProps = {
+  contact: any;
+  isSelected: boolean;
+  canManageBase: boolean;
+  onToggleSelect: (id: string, on: boolean) => void;
+  onOpenCall: (c: any) => void;
+  onOpenHistory: (id: string) => void;
+  onChangeStatus: (id: string, status: string) => void;
+  renderPhone: (c: any) => React.ReactNode;
+  operatorName: (id: string | null) => string;
+};
+
+const ContactRow = memo(function ContactRow({
+  contact: c, isSelected, canManageBase,
+  onToggleSelect, onOpenCall, onOpenHistory, onChangeStatus,
+  renderPhone, operatorName,
+}: RowProps) {
+  return (
+    <div className={cn(
+      "grid items-center gap-3 px-4 border-b border-border/60 text-sm h-full",
+      canManageBase ? GRID_WITH_CHECK : GRID_NO_CHECK
+    )}>
+      {canManageBase && (
+        <div>
+          <Checkbox checked={isSelected} onCheckedChange={(v) => onToggleSelect(c.id, !!v)} />
+        </div>
+      )}
+      <div className="font-medium truncate">{c.full_name}</div>
+      <div className="truncate">{renderPhone(c)}</div>
+      <div className="text-muted-foreground text-xs truncate">{TYPE[c.contact_type]}</div>
+      <div className="text-muted-foreground text-xs truncate">{operatorName(c.assigned_operator)}</div>
+      <div>
+        <Select value={c.status} onValueChange={(v) => onChangeStatus(c.id, v)}>
+          <SelectTrigger className="w-auto h-7 border-0 p-0 bg-transparent [&>svg]:hidden">
+            <Badge variant="outline" className={STATUS_COLOR[c.status]}>{STATUS[c.status]}</Badge>
+          </SelectTrigger>
+          <SelectContent>{Object.entries(STATUS).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent>
+        </Select>
+      </div>
+      <div className="text-muted-foreground text-xs whitespace-nowrap">{new Date(c.created_at).toLocaleDateString("ru-RU")}</div>
+      <div className="text-right space-x-1">
+        <Button size="sm" variant="outline" onClick={() => onOpenCall(c)}>
+          <PhoneIcon className="size-3 mr-1" />Звонок
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => onOpenHistory(c.id)}>
+          <History className="size-3" />
+        </Button>
+      </div>
+    </div>
+  );
+});
+
+type TableProps = {
+  rows: any[];
+  total: number;
+  canManageBase: boolean;
+  selected: Set<string>;
+  allLoadedSelected: boolean;
+  onToggleSelectAllLoaded: (on: boolean) => void;
+  onToggleSelect: (id: string, on: boolean) => void;
+  onOpenCall: (c: any) => void;
+  onOpenHistory: (id: string) => void;
+  onChangeStatus: (id: string, status: string) => void;
+  renderPhone: (c: any) => React.ReactNode;
+  operatorName: (id: string | null) => string;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  isLoading: boolean;
+  onLoadMore: () => void;
+};
+
+function VirtualContactsTable(props: TableProps) {
+  const {
+    rows, total, canManageBase, selected, allLoadedSelected,
+    onToggleSelectAllLoaded, onToggleSelect, onOpenCall, onOpenHistory,
+    onChangeStatus, renderPhone, operatorName,
+    hasNextPage, isFetchingNextPage, isLoading, onLoadMore,
+  } = props;
+
+  const parentRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 52,
+    overscan: 10,
+  });
+
+  const items = virtualizer.getVirtualItems();
+
+  // Infinite scroll: fetch next page when the tail becomes visible.
+  useEffect(() => {
+    if (!hasNextPage || isFetchingNextPage) return;
+    const last = items[items.length - 1];
+    if (last && last.index >= rows.length - 8) onLoadMore();
+  }, [items, rows.length, hasNextPage, isFetchingNextPage, onLoadMore]);
+
+  const gridCls = canManageBase ? GRID_WITH_CHECK : GRID_NO_CHECK;
+
+  return (
+    <div className="rounded-2xl border border-border bg-gradient-surface shadow-card overflow-hidden">
+      {/* Header — sticky via separate block */}
+      <div className={cn("grid items-center gap-3 px-4 py-2.5 border-b border-border bg-muted/40 text-xs font-medium text-muted-foreground uppercase tracking-wider", gridCls)}>
+        {canManageBase && (
+          <div>
+            <Checkbox checked={allLoadedSelected} onCheckedChange={(v) => onToggleSelectAllLoaded(!!v)} />
+          </div>
+        )}
+        <div>ФИО</div>
+        <div>Телефон</div>
+        <div>Тип</div>
+        <div>Оператор</div>
+        <div>Статус</div>
+        <div>Добавлен</div>
+        <div className="text-right">Действия</div>
+      </div>
+
+      <div ref={parentRef} className="overflow-auto" style={{ height: "min(70vh, 720px)" }}>
+        {rows.length === 0 && !isLoading ? (
+          <div className="text-center text-muted-foreground py-12 text-sm">Контактов нет</div>
+        ) : (
+          <div style={{ height: virtualizer.getTotalSize(), position: "relative", width: "100%" }}>
+            {items.map((v) => {
+              const c = rows[v.index];
+              if (!c) return null;
+              return (
+                <div
+                  key={c.id}
+                  data-index={v.index}
+                  ref={virtualizer.measureElement}
+                  style={{ position: "absolute", top: 0, left: 0, width: "100%", transform: `translateY(${v.start}px)`, height: v.size }}
+                >
+                  <ContactRow
+                    contact={c}
+                    isSelected={selected.has(c.id)}
+                    canManageBase={canManageBase}
+                    onToggleSelect={onToggleSelect}
+                    onOpenCall={onOpenCall}
+                    onOpenHistory={onOpenHistory}
+                    onChangeStatus={onChangeStatus}
+                    renderPhone={renderPhone}
+                    operatorName={operatorName}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div className="px-4 py-2.5 border-t border-border flex items-center justify-between text-xs text-muted-foreground bg-muted/20">
+        <span>Загружено {rows.length} из {total}</span>
+        <span>{isFetchingNextPage ? "Загрузка…" : hasNextPage ? "Прокрутите вниз для загрузки" : "Все контакты загружены"}</span>
+      </div>
+    </div>
+  );
+}
+
 function AiOperatorPanel({ ai, isAdmin, onEdit }: { ai: any; isAdmin: boolean; onEdit: () => void }) {
   const s = ai?.connection_status ?? "disconnected";
   const st = AI_STATUS[s] ?? AI_STATUS.disconnected;
