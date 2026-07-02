@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { Plus, Upload, Phone as PhoneIcon, History, Trash2, Download, KeyRound, Users, Bot, UserPlus, Pencil, Inbox, PhoneCall, XCircle, CheckCircle2, UserCog, Settings } from "lucide-react";
+import { Plus, Upload, Phone as PhoneIcon, History, Trash2, Download, KeyRound, Users, Bot, UserPlus, Pencil, Inbox, PhoneCall, XCircle, CheckCircle2, UserCog, Settings, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { parseContactsFile, maskPhone, exportContactsCsv } from "@/lib/call-base";
@@ -49,7 +49,7 @@ const AI_STATUS: Record<string, { label: string; cls: string }> = {
 
 type View =
   | { kind: "all" } | { kind: "unassigned" } | { kind: "operator"; id: string }
-  | { kind: "ai" } | { kind: "callbacks" } | { kind: "refusals" } | { kind: "installs" };
+  | { kind: "ai" } | { kind: "callbacks" } | { kind: "refusals" } | { kind: "installs" } | { kind: "reports" };
 
 function CallCenter() {
   const qc = useQueryClient();
@@ -126,6 +126,7 @@ function CallCenter() {
         case "callbacks": return ["callback", "no_answer"].includes(c.status);
         case "refusals": return c.status === "refused";
         case "installs": return ["install_scheduled", "passed_to_coordinator"].includes(c.status);
+        case "reports": return false;
       }
     });
   }, [contacts, view, canSeeAll, user?.id]);
@@ -338,11 +339,14 @@ function CallCenter() {
           <NavBtn active={view.kind === "callbacks"} onClick={() => setView({ kind: "callbacks" })} icon={PhoneCall} label="Перезвоны" count={counts.callbacks} />
           <NavBtn active={view.kind === "refusals"} onClick={() => setView({ kind: "refusals" })} icon={XCircle} label="Отказы" count={counts.refusals} />
           <NavBtn active={view.kind === "installs"} onClick={() => setView({ kind: "installs" })} icon={CheckCircle2} label="Назначенные установки" count={counts.installs} />
+          {canSeeAll && <NavBtn active={view.kind === "reports"} onClick={() => setView({ kind: "reports" })} icon={BarChart3} label="Отчёты" />}
         </aside>
 
         <section className="space-y-4">
           {view.kind === "ai" ? (
             <AiOperatorPanel ai={ai} isAdmin={isAdmin} onEdit={() => setAiOpen(true)} />
+          ) : view.kind === "reports" ? (
+            <ReportsPanel />
           ) : (
             <>
               {canManageBase && selected.size > 0 && (
@@ -685,5 +689,77 @@ function AiOperatorDialog({ open, onOpenChange, ai }: { open: boolean; onOpenCha
         <DialogFooter><Button onClick={() => save.mutate()} disabled={save.isPending} className="bg-gradient-primary">Сохранить</Button></DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ReportsPanel() {
+  const { data: ops = [] } = useQuery({
+    queryKey: ["cc_op_stats"],
+    queryFn: async () => (await supabase.rpc("call_center_operator_stats" as any)).data ?? [],
+  });
+  const { data: overview } = useQuery({
+    queryKey: ["cc_overview"],
+    queryFn: async () => (await supabase.rpc("call_center_overview" as any)).data?.[0] ?? null,
+  });
+  const Kpi = ({ label, value }: { label: string; value: any }) => (
+    <div className="rounded-xl border border-border bg-muted/30 p-4">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="text-xl font-semibold mt-1">{value ?? "—"}</div>
+    </div>
+  );
+  return (
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-border bg-gradient-surface shadow-card p-6">
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2"><BarChart3 className="size-5 text-primary" />Общий отчёт колл-центра</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Kpi label="Всего контактов" value={overview?.total_contacts ?? 0} />
+          <Kpi label="Без оператора" value={overview?.unassigned ?? 0} />
+          <Kpi label="Звонков сегодня" value={overview?.calls_today ?? 0} />
+          <Kpi label="Звонков за месяц" value={overview?.calls_month ?? 0} />
+          <Kpi label="Назначено установок" value={overview?.installs ?? 0} />
+          <Kpi label="Эффективность операторов" value={`${overview?.operators_effectiveness ?? 0}%`} />
+          <Kpi label="Эффективность AI" value={`${overview?.ai_effectiveness ?? 0}%`} />
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-border bg-gradient-surface shadow-card overflow-hidden">
+        <div className="px-6 py-4 border-b border-border">
+          <h2 className="text-lg font-semibold">По операторам</h2>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Оператор</TableHead>
+              <TableHead className="text-right">Всего</TableHead>
+              <TableHead className="text-right">Обзвонено</TableHead>
+              <TableHead className="text-right">Дозвонов</TableHead>
+              <TableHead className="text-right">Отказов</TableHead>
+              <TableHead className="text-right">Перезвонов</TableHead>
+              <TableHead className="text-right">Установок</TableHead>
+              <TableHead className="text-right">Конверсия</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(ops as any[]).map((o) => (
+              <TableRow key={o.user_id}>
+                <TableCell className="font-medium">{o.full_name || "Без имени"}</TableCell>
+                <TableCell className="text-right">{o.total_contacts}</TableCell>
+                <TableCell className="text-right">{o.called}</TableCell>
+                <TableCell className="text-right">{o.connected}</TableCell>
+                <TableCell className="text-right">{o.refused}</TableCell>
+                <TableCell className="text-right">{o.callbacks}</TableCell>
+                <TableCell className="text-right">{o.installs}</TableCell>
+                <TableCell className="text-right">
+                  <Badge variant="outline" className={Number(o.conversion) >= 20 ? "bg-success/15 text-success border-success/30" : "bg-muted text-muted-foreground border-border"}>
+                    {Number(o.conversion)}%
+                  </Badge>
+                </TableCell>
+              </TableRow>
+            ))}
+            {(ops as any[]).length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Операторов нет</TableCell></TableRow>}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
   );
 }
