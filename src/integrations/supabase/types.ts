@@ -977,6 +977,11 @@ export type Database = {
         | "presentation_scheduled"
         | "sold"
         | "refused"
+        | "queued"
+        | "connected"
+        | "no_answer"
+        | "install_scheduled"
+        | "passed_to_coordinator"
       contact_type: "cold" | "recommendation" | "instagram" | "site" | "other"
       deal_stage:
         | "lead"
@@ -1154,6 +1159,11 @@ export const Constants = {
         "presentation_scheduled",
         "sold",
         "refused",
+        "queued",
+        "connected",
+        "no_answer",
+        "install_scheduled",
+        "passed_to_coordinator",
       ],
       contact_type: ["cold", "recommendation", "instagram", "site", "other"],
       deal_stage: [
