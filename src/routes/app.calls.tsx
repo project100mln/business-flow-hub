@@ -339,6 +339,7 @@ function CallCenter() {
           <NavBtn active={view.kind === "callbacks"} onClick={() => setView({ kind: "callbacks" })} icon={PhoneCall} label="Перезвоны" count={counts.callbacks} />
           <NavBtn active={view.kind === "refusals"} onClick={() => setView({ kind: "refusals" })} icon={XCircle} label="Отказы" count={counts.refusals} />
           <NavBtn active={view.kind === "installs"} onClick={() => setView({ kind: "installs" })} icon={CheckCircle2} label="Назначенные установки" count={counts.installs} />
+          {canSeeAll && <NavBtn active={view.kind === "reports"} onClick={() => setView({ kind: "reports" })} icon={BarChart3} label="Отчёты" />}
         </aside>
 
         <section className="space-y-4">
