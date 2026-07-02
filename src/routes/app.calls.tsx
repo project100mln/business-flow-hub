@@ -82,14 +82,61 @@ function CallCenter() {
   const [form, setForm] = useState({ full_name: "", phone: "", source: "", contact_type: "cold", comment: "" });
   const [callForm, setCallForm] = useState({ result: "connected", comment: "", recording_url: "", next_step: "", next_contact_at: "" });
 
-  const { data: contacts = [] } = useQuery({
-    queryKey: ["cold_contacts"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("cold_contacts").select("*").order("created_at", { ascending: false }).limit(1000);
+  const PAGE_SIZE = 50;
+
+  const applyViewFilter = useCallback((q: any) => {
+    if (!canSeeAll && user?.id) q = q.eq("assigned_operator", user.id);
+    switch (view.kind) {
+      case "unassigned": q = q.is("assigned_operator", null); break;
+      case "operator": q = q.eq("assigned_operator", view.id); break;
+      case "callbacks": q = q.in("status", ["callback", "no_answer"]); break;
+      case "refusals": q = q.eq("status", "refused"); break;
+      case "installs": q = q.in("status", ["install_scheduled", "passed_to_coordinator"]); break;
+      default: break;
+    }
+    return q;
+  }, [view, canSeeAll, user?.id]);
+
+  const contactsKey = useMemo(
+    () => ["cold_contacts_paged", view, canSeeAll, user?.id] as const,
+    [view, canSeeAll, user?.id]
+  );
+
+  const {
+    data: pages,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading: contactsLoading,
+  } = useInfiniteQuery({
+    queryKey: contactsKey,
+    enabled: view.kind !== "ai" && view.kind !== "reports",
+    initialPageParam: 0,
+    queryFn: async ({ pageParam = 0 }) => {
+      const from = (pageParam as number) * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      let q = supabase
+        .from("cold_contacts")
+        .select("id,full_name,phone,contact_type,assigned_operator,status,created_at,source,comment,client_id,added_by,next_contact_at", { count: "exact" })
+        .order("created_at", { ascending: false })
+        .range(from, to);
+      q = applyViewFilter(q);
+      const { data, error, count } = await q;
       if (error) throw error;
-      return data;
+      return { rows: data ?? [], count: count ?? 0, page: pageParam as number };
     },
+    getNextPageParam: (last) => {
+      const loaded = (last.page + 1) * PAGE_SIZE;
+      return loaded < last.count ? last.page + 1 : undefined;
+    },
+    staleTime: 15_000,
   });
+
+  const filtered = useMemo(
+    () => (pages?.pages ?? []).flatMap((p) => p.rows),
+    [pages]
+  );
+  const totalFiltered = pages?.pages?.[0]?.count ?? 0;
 
   const { data: operators = [] } = useQuery({
     queryKey: ["operators"],
@@ -98,11 +145,13 @@ function CallCenter() {
       if (error) throw error;
       return (data ?? []) as { user_id: string; full_name: string | null; contacts_count: number }[];
     },
+    staleTime: 60_000,
   });
 
   const { data: ai } = useQuery({
     queryKey: ["ai_operator"],
     queryFn: async () => (await supabase.from("ai_operator" as any).select("*").limit(1).maybeSingle()).data as any,
+    staleTime: 60_000,
   });
 
   const { data: history = [] } = useQuery({
@@ -110,38 +159,38 @@ function CallCenter() {
     queryFn: async () => (await supabase.from("call_history").select("*").eq("contact_id", historyOpen!).order("called_at", { ascending: false })).data ?? [],
   });
 
-  const operatorName = (id: string | null) => {
-    if (!id) return "—";
-    const o = operators.find((x) => x.user_id === id);
-    return o?.full_name || id.slice(0, 6);
-  };
+  const operatorsById = useMemo(() => {
+    const m = new Map<string, string>();
+    operators.forEach((o) => m.set(o.user_id, o.full_name || o.user_id.slice(0, 6)));
+    return m;
+  }, [operators]);
+  const operatorName = useCallback(
+    (id: string | null) => (id ? (operatorsById.get(id) ?? "—") : "—"),
+    [operatorsById]
+  );
 
-  const filtered = useMemo(() => {
-    return contacts.filter((c: any) => {
-      if (!canSeeAll && c.assigned_operator !== user?.id) return false;
-      switch (view.kind) {
-        case "all": return true;
-        case "unassigned": return !c.assigned_operator;
-        case "operator": return c.assigned_operator === view.id;
-        case "ai": return false;
-        case "callbacks": return ["callback", "no_answer"].includes(c.status);
-        case "refusals": return c.status === "refused";
-        case "installs": return ["install_scheduled", "passed_to_coordinator"].includes(c.status);
-        case "reports": return false;
-      }
-    });
-  }, [contacts, view, canSeeAll, user?.id]);
-
-  const counts = useMemo(() => {
-    const base = canSeeAll ? contacts : contacts.filter((c: any) => c.assigned_operator === user?.id);
-    return {
-      all: base.length,
-      unassigned: base.filter((c: any) => !c.assigned_operator).length,
-      callbacks: base.filter((c: any) => ["callback", "no_answer"].includes(c.status)).length,
-      refusals: base.filter((c: any) => c.status === "refused").length,
-      installs: base.filter((c: any) => ["install_scheduled", "passed_to_coordinator"].includes(c.status)).length,
-    };
-  }, [contacts, canSeeAll, user?.id]);
+  const { data: counts = { all: 0, unassigned: 0, callbacks: 0, refusals: 0, installs: 0 } } = useQuery({
+    queryKey: ["cold_contacts_counts", canSeeAll, user?.id],
+    queryFn: async () => {
+      const scope = (q: any) => (!canSeeAll && user?.id ? q.eq("assigned_operator", user.id) : q);
+      const head = () => supabase.from("cold_contacts").select("id", { count: "exact", head: true });
+      const [all, unassigned, callbacks, refusals, installs] = await Promise.all([
+        scope(head()),
+        scope(head()).is("assigned_operator", null),
+        scope(head()).in("status", ["callback", "no_answer"]),
+        scope(head()).eq("status", "refused"),
+        scope(head()).in("status", ["install_scheduled", "passed_to_coordinator"]),
+      ]);
+      return {
+        all: all.count ?? 0,
+        unassigned: unassigned.count ?? 0,
+        callbacks: callbacks.count ?? 0,
+        refusals: refusals.count ?? 0,
+        installs: installs.count ?? 0,
+      };
+    },
+    staleTime: 30_000,
+  });
 
   const create = useMutation({
     mutationFn: async () => {
