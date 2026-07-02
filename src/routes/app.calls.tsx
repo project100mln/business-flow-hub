@@ -467,68 +467,25 @@ function CallCenter() {
                 </div>
               )}
 
-              <div className="rounded-2xl border border-border bg-gradient-surface shadow-card overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      {canManageBase && (
-                        <TableHead className="w-8">
-                          <Checkbox checked={filtered.length > 0 && filtered.every((c: any) => selected.has(c.id))}
-                            onCheckedChange={(v) => {
-                              const next = new Set(selected);
-                              filtered.forEach((c: any) => v ? next.add(c.id) : next.delete(c.id));
-                              setSelected(next);
-                            }} />
-                        </TableHead>
-                      )}
-                      <TableHead>ФИО</TableHead>
-                      <TableHead>Телефон</TableHead>
-                      <TableHead>Тип</TableHead>
-                      <TableHead>Оператор</TableHead>
-                      <TableHead>Статус</TableHead>
-                      <TableHead>Добавлен</TableHead>
-                      <TableHead className="text-right">Действия</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filtered.map((c: any) => (
-                      <TableRow key={c.id}>
-                        {canManageBase && (
-                          <TableCell>
-                            <Checkbox checked={selected.has(c.id)} onCheckedChange={(v) => {
-                              const next = new Set(selected);
-                              v ? next.add(c.id) : next.delete(c.id);
-                              setSelected(next);
-                            }} />
-                          </TableCell>
-                        )}
-                        <TableCell className="font-medium">{c.full_name}</TableCell>
-                        <TableCell>{renderPhone(c)}</TableCell>
-                        <TableCell className="text-muted-foreground text-xs">{TYPE[c.contact_type]}</TableCell>
-                        <TableCell className="text-muted-foreground text-xs">{operatorName(c.assigned_operator)}</TableCell>
-                        <TableCell>
-                          <Select value={c.status} onValueChange={(v) => updateStatus.mutate({ id: c.id, status: v })}>
-                            <SelectTrigger className="w-auto h-7 border-0 p-0 bg-transparent [&>svg]:hidden">
-                              <Badge variant="outline" className={STATUS_COLOR[c.status]}>{STATUS[c.status]}</Badge>
-                            </SelectTrigger>
-                            <SelectContent>{Object.entries(STATUS).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent>
-                          </Select>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-xs whitespace-nowrap">{new Date(c.created_at).toLocaleDateString("ru-RU")}</TableCell>
-                        <TableCell className="text-right space-x-1">
-                          <Button size="sm" variant="outline" onClick={() => { setCurrentContact(c); setCallOpen(true); }}>
-                            <PhoneIcon className="size-3 mr-1" />Звонок
-                          </Button>
-                          <Button size="sm" variant="ghost" onClick={() => setHistoryOpen(c.id)}>
-                            <History className="size-3" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {filtered.length === 0 && <TableRow><TableCell colSpan={canManageBase ? 8 : 7} className="text-center text-muted-foreground py-12">Контактов нет</TableCell></TableRow>}
-                  </TableBody>
-                </Table>
-              </div>
+              <VirtualContactsTable
+                rows={filtered}
+                total={totalFiltered}
+                canManageBase={canManageBase}
+                selected={selected}
+                allLoadedSelected={allLoadedSelected}
+                onToggleSelectAllLoaded={toggleSelectAllLoaded}
+                onToggleSelect={toggleSelect}
+                onOpenCall={openCall}
+                onOpenHistory={openHistory}
+                onChangeStatus={changeStatus}
+                renderPhone={renderPhone}
+                operatorName={operatorName}
+                hasNextPage={!!hasNextPage}
+                isFetchingNextPage={isFetchingNextPage}
+                isLoading={contactsLoading}
+                onLoadMore={() => fetchNextPage()}
+              />
+
             </>
           )}
         </section>
