@@ -126,6 +126,7 @@ function CallCenter() {
         case "callbacks": return ["callback", "no_answer"].includes(c.status);
         case "refusals": return c.status === "refused";
         case "installs": return ["install_scheduled", "passed_to_coordinator"].includes(c.status);
+        case "reports": return false;
       }
     });
   }, [contacts, view, canSeeAll, user?.id]);
