@@ -294,8 +294,12 @@ function CallCenter() {
     finally { if (fileRef.current) fileRef.current.value = ""; }
   };
 
-  const handleExport = () => {
-    const csv = exportContactsCsv(contacts as any[]);
+  const handleExport = async () => {
+    let q = supabase.from("cold_contacts").select("*").order("created_at", { ascending: false }).limit(50000);
+    q = applyViewFilter(q);
+    const { data, error } = await q;
+    if (error) { toast.error(error.message); return; }
+    const csv = exportContactsCsv((data ?? []) as any[]);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
