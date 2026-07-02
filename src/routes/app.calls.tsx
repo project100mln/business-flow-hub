@@ -327,9 +327,33 @@ function CallCenter() {
     toast.success("Экспорт готов");
   };
 
-  const renderPhone = (c: any) => canViewFullPhone
+  const renderPhone = useCallback((c: any) => canViewFullPhone
     ? <a href={`tel:${c.phone}`} className="inline-flex items-center gap-1.5 hover:underline"><PhoneIcon className="size-3 text-muted-foreground" />{c.phone}</a>
-    : <span className="inline-flex items-center gap-1.5 text-muted-foreground"><PhoneIcon className="size-3" />{maskPhone(c.phone)}</span>;
+    : <span className="inline-flex items-center gap-1.5 text-muted-foreground"><PhoneIcon className="size-3" />{maskPhone(c.phone)}</span>,
+  [canViewFullPhone]);
+
+  // Stable per-row callbacks — never change identity, so React.memo rows don't re-render.
+  const toggleSelect = useCallback((id: string, on: boolean) => {
+    setSelected((prev) => {
+      if (on ? prev.has(id) : !prev.has(id)) return prev;
+      const next = new Set(prev);
+      if (on) next.add(id); else next.delete(id);
+      return next;
+    });
+  }, []);
+  const openCall = useCallback((c: any) => { setCurrentContact(c); setCallOpen(true); }, []);
+  const openHistory = useCallback((id: string) => setHistoryOpen(id), []);
+  const changeStatus = useCallback((id: string, status: string) => updateStatus.mutate({ id, status }), [updateStatus]);
+
+  const allLoadedSelected = filtered.length > 0 && filtered.every((c: any) => selected.has(c.id));
+  const toggleSelectAllLoaded = useCallback((on: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      filtered.forEach((c: any) => { if (on) next.add(c.id); else next.delete(c.id); });
+      return next;
+    });
+  }, [filtered]);
+
 
   const NavBtn = ({ active, onClick, icon: Icon, label, count }: any) => (
     <button onClick={onClick} className={cn(
