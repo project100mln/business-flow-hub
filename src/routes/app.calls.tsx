@@ -345,6 +345,8 @@ function CallCenter() {
         <section className="space-y-4">
           {view.kind === "ai" ? (
             <AiOperatorPanel ai={ai} isAdmin={isAdmin} onEdit={() => setAiOpen(true)} />
+          ) : view.kind === "reports" ? (
+            <ReportsPanel />
           ) : (
             <>
               {canManageBase && selected.size > 0 && (
