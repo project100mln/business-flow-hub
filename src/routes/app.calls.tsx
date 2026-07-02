@@ -701,7 +701,7 @@ function ReportsPanel() {
     queryKey: ["cc_overview"],
     queryFn: async () => (await supabase.rpc("call_center_overview" as any)).data?.[0] ?? null,
   });
-  const Kpi = ({ label, value }: { label: string; value: React.ReactNode }) => (
+  const Kpi = ({ label, value }: { label: string; value: any }) => (
     <div className="rounded-xl border border-border bg-muted/30 p-4">
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className="text-xl font-semibold mt-1">{value ?? "—"}</div>
