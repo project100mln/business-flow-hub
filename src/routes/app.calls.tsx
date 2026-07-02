@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { Plus, Upload, Phone as PhoneIcon, History, Trash2, Download, KeyRound, Users, Bot, UserPlus, Pencil, Inbox, PhoneCall, XCircle, CheckCircle2, UserCog, Settings } from "lucide-react";
+import { Plus, Upload, Phone as PhoneIcon, History, Trash2, Download, KeyRound, Users, Bot, UserPlus, Pencil, Inbox, PhoneCall, XCircle, CheckCircle2, UserCog, Settings, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { parseContactsFile, maskPhone, exportContactsCsv } from "@/lib/call-base";
