@@ -941,6 +941,32 @@ export type Database = {
         Args: { _name: string; _user_id: string }
         Returns: undefined
       }
+      call_center_operator_stats: {
+        Args: never
+        Returns: {
+          callbacks: number
+          called: number
+          connected: number
+          conversion: number
+          full_name: string
+          installs: number
+          refused: number
+          total_contacts: number
+          user_id: string
+        }[]
+      }
+      call_center_overview: {
+        Args: never
+        Returns: {
+          ai_effectiveness: number
+          calls_month: number
+          calls_today: number
+          installs: number
+          operators_effectiveness: number
+          total_contacts: number
+          unassigned: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
