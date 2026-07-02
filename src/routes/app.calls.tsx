@@ -49,7 +49,7 @@ const AI_STATUS: Record<string, { label: string; cls: string }> = {
 
 type View =
   | { kind: "all" } | { kind: "unassigned" } | { kind: "operator"; id: string }
-  | { kind: "ai" } | { kind: "callbacks" } | { kind: "refusals" } | { kind: "installs" };
+  | { kind: "ai" } | { kind: "callbacks" } | { kind: "refusals" } | { kind: "installs" } | { kind: "reports" };
 
 function CallCenter() {
   const qc = useQueryClient();
