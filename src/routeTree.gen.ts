@@ -20,6 +20,7 @@ import { Route as AppOwnerRouteImport } from './routes/app.owner'
 import { Route as AppObjectsRouteImport } from './routes/app.objects'
 import { Route as AppInstallmentsRouteImport } from './routes/app.installments'
 import { Route as AppInstallationsRouteImport } from './routes/app.installations'
+import { Route as AppHylaRouteImport } from './routes/app.hyla'
 import { Route as AppFinanceRouteImport } from './routes/app.finance'
 import { Route as AppDealsRouteImport } from './routes/app.deals'
 import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
@@ -82,6 +83,11 @@ const AppInstallationsRoute = AppInstallationsRouteImport.update({
   path: '/installations',
   getParentRoute: () => AppRoute,
 } as any)
+const AppHylaRoute = AppHylaRouteImport.update({
+  id: '/hyla',
+  path: '/hyla',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppFinanceRoute = AppFinanceRouteImport.update({
   id: '/finance',
   path: '/finance',
@@ -123,6 +129,7 @@ export interface FileRoutesByFullPath {
   '/app/dashboard': typeof AppDashboardRoute
   '/app/deals': typeof AppDealsRoute
   '/app/finance': typeof AppFinanceRoute
+  '/app/hyla': typeof AppHylaRoute
   '/app/installations': typeof AppInstallationsRoute
   '/app/installments': typeof AppInstallmentsRoute
   '/app/objects': typeof AppObjectsRoute
@@ -142,6 +149,7 @@ export interface FileRoutesByTo {
   '/app/dashboard': typeof AppDashboardRoute
   '/app/deals': typeof AppDealsRoute
   '/app/finance': typeof AppFinanceRoute
+  '/app/hyla': typeof AppHylaRoute
   '/app/installations': typeof AppInstallationsRoute
   '/app/installments': typeof AppInstallmentsRoute
   '/app/objects': typeof AppObjectsRoute
@@ -162,6 +170,7 @@ export interface FileRoutesById {
   '/app/dashboard': typeof AppDashboardRoute
   '/app/deals': typeof AppDealsRoute
   '/app/finance': typeof AppFinanceRoute
+  '/app/hyla': typeof AppHylaRoute
   '/app/installations': typeof AppInstallationsRoute
   '/app/installments': typeof AppInstallmentsRoute
   '/app/objects': typeof AppObjectsRoute
@@ -183,6 +192,7 @@ export interface FileRouteTypes {
     | '/app/dashboard'
     | '/app/deals'
     | '/app/finance'
+    | '/app/hyla'
     | '/app/installations'
     | '/app/installments'
     | '/app/objects'
@@ -202,6 +212,7 @@ export interface FileRouteTypes {
     | '/app/dashboard'
     | '/app/deals'
     | '/app/finance'
+    | '/app/hyla'
     | '/app/installations'
     | '/app/installments'
     | '/app/objects'
@@ -221,6 +232,7 @@ export interface FileRouteTypes {
     | '/app/dashboard'
     | '/app/deals'
     | '/app/finance'
+    | '/app/hyla'
     | '/app/installations'
     | '/app/installments'
     | '/app/objects'
@@ -316,6 +328,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppInstallationsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/hyla': {
+      id: '/app/hyla'
+      path: '/hyla'
+      fullPath: '/app/hyla'
+      preLoaderRoute: typeof AppHylaRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/finance': {
       id: '/app/finance'
       path: '/finance'
@@ -368,6 +387,7 @@ interface AppRouteChildren {
   AppDashboardRoute: typeof AppDashboardRoute
   AppDealsRoute: typeof AppDealsRoute
   AppFinanceRoute: typeof AppFinanceRoute
+  AppHylaRoute: typeof AppHylaRoute
   AppInstallationsRoute: typeof AppInstallationsRoute
   AppInstallmentsRoute: typeof AppInstallmentsRoute
   AppObjectsRoute: typeof AppObjectsRoute
@@ -385,6 +405,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppDashboardRoute: AppDashboardRoute,
   AppDealsRoute: AppDealsRoute,
   AppFinanceRoute: AppFinanceRoute,
+  AppHylaRoute: AppHylaRoute,
   AppInstallationsRoute: AppInstallationsRoute,
   AppInstallmentsRoute: AppInstallmentsRoute,
   AppObjectsRoute: AppObjectsRoute,
