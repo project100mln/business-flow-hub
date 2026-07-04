@@ -338,6 +338,81 @@ export type Database = {
           },
         ]
       }
+      hyla_leads: {
+        Row: {
+          air_quality_interest: boolean | null
+          city: string | null
+          comment: string | null
+          created_at: string
+          created_by: string | null
+          district: string | null
+          full_name: string
+          has_allergy: boolean | null
+          has_carpets: boolean | null
+          has_children: boolean | null
+          has_mattresses: boolean | null
+          has_odors: boolean | null
+          has_pets: boolean | null
+          id: string
+          operator_id: string | null
+          phone: string
+          quiz_completed_at: string | null
+          score: number
+          status: Database["public"]["Enums"]["hyla_lead_status"]
+          updated_at: string
+          utm_campaign: string | null
+          utm_source: string | null
+        }
+        Insert: {
+          air_quality_interest?: boolean | null
+          city?: string | null
+          comment?: string | null
+          created_at?: string
+          created_by?: string | null
+          district?: string | null
+          full_name: string
+          has_allergy?: boolean | null
+          has_carpets?: boolean | null
+          has_children?: boolean | null
+          has_mattresses?: boolean | null
+          has_odors?: boolean | null
+          has_pets?: boolean | null
+          id?: string
+          operator_id?: string | null
+          phone: string
+          quiz_completed_at?: string | null
+          score?: number
+          status?: Database["public"]["Enums"]["hyla_lead_status"]
+          updated_at?: string
+          utm_campaign?: string | null
+          utm_source?: string | null
+        }
+        Update: {
+          air_quality_interest?: boolean | null
+          city?: string | null
+          comment?: string | null
+          created_at?: string
+          created_by?: string | null
+          district?: string | null
+          full_name?: string
+          has_allergy?: boolean | null
+          has_carpets?: boolean | null
+          has_children?: boolean | null
+          has_mattresses?: boolean | null
+          has_odors?: boolean | null
+          has_pets?: boolean | null
+          id?: string
+          operator_id?: string | null
+          phone?: string
+          quiz_completed_at?: string | null
+          score?: number
+          status?: Database["public"]["Enums"]["hyla_lead_status"]
+          updated_at?: string
+          utm_campaign?: string | null
+          utm_source?: string | null
+        }
+        Relationships: []
+      }
       install_requests: {
         Row: {
           address: string | null
@@ -1022,6 +1097,15 @@ export type Database = {
         | "decision"
         | "dismantle"
         | "sale"
+      hyla_lead_status:
+        | "new"
+        | "quiz_done"
+        | "operator_contacted"
+        | "demo_scheduled"
+        | "demo_done"
+        | "callback"
+        | "sale"
+        | "refused"
       install_request_status:
         | "new"
         | "awaiting_master"
@@ -1205,6 +1289,16 @@ export const Constants = {
         "decision",
         "dismantle",
         "sale",
+      ],
+      hyla_lead_status: [
+        "new",
+        "quiz_done",
+        "operator_contacted",
+        "demo_scheduled",
+        "demo_done",
+        "callback",
+        "sale",
+        "refused",
       ],
       install_request_status: [
         "new",
