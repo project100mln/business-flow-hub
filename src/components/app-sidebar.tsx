@@ -1,5 +1,5 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
-import { LayoutDashboard, Users, Building2, Briefcase, ListChecks, Wrench, LifeBuoy, CreditCard, Boxes, Wallet, LogOut, UserCog, Crown, Headphones, ClipboardList } from "lucide-react";
+import { LayoutDashboard, Users, Building2, Briefcase, ListChecks, Wrench, LifeBuoy, CreditCard, Boxes, Wallet, LogOut, UserCog, Crown, Headphones, ClipboardList, Sparkles } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, useSidebar,
@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/use-auth";
 const salesItems = [
   { title: "Дашборд", url: "/app/dashboard", icon: LayoutDashboard },
   { title: "База обзвона", url: "/app/calls", icon: Headphones },
+  { title: "HYLA лиды", url: "/app/hyla", icon: Sparkles },
   { title: "Клиенты", url: "/app/clients", icon: Users },
   { title: "Объекты (B2B)", url: "/app/objects", icon: Building2 },
   { title: "Продажи", url: "/app/deals", icon: Briefcase },
