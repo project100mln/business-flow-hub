@@ -354,6 +354,7 @@ export type Database = {
           has_odors: boolean | null
           has_pets: boolean | null
           id: string
+          next_contact_at: string | null
           operator_id: string | null
           phone: string
           quiz_completed_at: string | null
@@ -378,6 +379,7 @@ export type Database = {
           has_odors?: boolean | null
           has_pets?: boolean | null
           id?: string
+          next_contact_at?: string | null
           operator_id?: string | null
           phone: string
           quiz_completed_at?: string | null
@@ -402,6 +404,7 @@ export type Database = {
           has_odors?: boolean | null
           has_pets?: boolean | null
           id?: string
+          next_contact_at?: string | null
           operator_id?: string | null
           phone?: string
           quiz_completed_at?: string | null
@@ -1106,6 +1109,7 @@ export type Database = {
         | "callback"
         | "sale"
         | "refused"
+        | "thinking"
       install_request_status:
         | "new"
         | "awaiting_master"
@@ -1299,6 +1303,7 @@ export const Constants = {
         "callback",
         "sale",
         "refused",
+        "thinking",
       ],
       install_request_status: [
         "new",
