@@ -61,22 +61,26 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
   );
 
-  const { error } = await supabase.from("hyla_leads").insert({
-    full_name,
-    phone,
-    city: body.city ?? null,
-    district: body.district ?? null,
-    utm_source: body.utm_source ?? null,
-    utm_campaign: body.utm_campaign ?? null,
-    has_carpets: body.has_carpets ?? null,
-    has_mattresses: body.has_mattresses ?? null,
-    has_allergy: body.has_allergy ?? null,
-    has_pets: body.has_pets ?? null,
-    has_odors: body.has_odors ?? null,
-    air_quality_interest: body.air_quality_interest ?? null,
-    has_children: body.has_children ?? null,
-    comment: body.comment ?? null,
-  });
+  const { data, error } = await supabase
+    .from("hyla_leads")
+    .insert({
+      full_name,
+      phone,
+      city: body.city ?? null,
+      district: body.district ?? null,
+      utm_source: body.utm_source ?? null,
+      utm_campaign: body.utm_campaign ?? null,
+      has_carpets: body.has_carpets ?? null,
+      has_mattresses: body.has_mattresses ?? null,
+      has_allergy: body.has_allergy ?? null,
+      has_pets: body.has_pets ?? null,
+      has_odors: body.has_odors ?? null,
+      air_quality_interest: body.air_quality_interest ?? null,
+      has_children: body.has_children ?? null,
+      comment: body.comment ?? null,
+    })
+    .select("id")
+    .single();
 
   if (error) {
     console.error("[hyla-bot-intake] insert error:", error.message);
@@ -86,7 +90,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  return new Response(JSON.stringify({ ok: true }), {
+  return new Response(JSON.stringify({ ok: true, id: data.id }), {
     status: 200,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
