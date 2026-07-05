@@ -2,3 +2,6 @@ project_id = "aublvqruopbcwbziclfi"
 
 [functions.hyla-bot-intake]
 verify_jwt = false
+
+[functions.hyla-bot-update-status]
+verify_jwt = false
