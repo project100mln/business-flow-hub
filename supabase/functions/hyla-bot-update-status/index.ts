@@ -17,6 +17,7 @@ const VALID_STATUSES = [
   "demo_scheduled",
   "demo_done",
   "callback",
+  "thinking",
   "sale",
   "refused",
 ];
