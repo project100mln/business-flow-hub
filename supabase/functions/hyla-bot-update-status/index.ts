@@ -67,6 +67,14 @@ Deno.serve(async (req) => {
     );
   }
 
+  // next_contact_at необязателен — приходит только для исходов
+  // callback/thinking, когда бот в Telegram уже спросил дату следующего
+  // контакта. Если поле не передано, колонку не трогаем.
+  const updateData: Record<string, unknown> = { status };
+  if (typeof body.next_contact_at === "string") {
+    updateData.next_contact_at = body.next_contact_at;
+  }
+
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
@@ -74,7 +82,7 @@ Deno.serve(async (req) => {
 
   const { error } = await supabase
     .from("hyla_leads")
-    .update({ status })
+    .update(updateData)
     .eq("id", leadId);
 
   if (error) {
