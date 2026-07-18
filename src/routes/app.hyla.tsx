@@ -57,6 +57,7 @@ function HylaLeads() {
   const qc = useQueryClient();
   const [status, setStatus] = useState<string>("all");
   const [operatorId, setOperatorId] = useState<string>("all");
+  const [source, setSource] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
   const [search, setSearch] = useState<string>("");
@@ -75,12 +76,28 @@ function HylaLeads() {
     },
   });
 
+  // Distinct source values for the filter dropdown, loaded independently of the
+  // active filters so selecting a source doesn't collapse the option list.
+  const { data: sourceOptions = [] } = useQuery({
+    queryKey: ["hyla_lead_sources"],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("hyla_leads")
+        .select("source")
+        .not("source", "is", null)
+        .limit(2000);
+      const set = new Set<string>((data ?? []).map((r: any) => r.source).filter(Boolean));
+      return Array.from(set).sort((a, b) => a.localeCompare(b, "ru"));
+    },
+  });
+
   const { data: leads = [], isLoading } = useQuery({
-    queryKey: ["hyla_leads", status, operatorId, dateFrom, dateTo, search],
+    queryKey: ["hyla_leads", status, operatorId, source, dateFrom, dateTo, search],
     queryFn: async () => {
       let q = (supabase as any).from("hyla_leads").select("*").order("created_at", { ascending: false }).limit(500);
       if (status !== "all") q = q.eq("status", status);
       if (operatorId !== "all") q = operatorId === "none" ? q.is("operator_id", null) : q.eq("operator_id", operatorId);
+      if (source !== "all") q = source === "none" ? q.is("source", null) : q.eq("source", source);
       if (dateFrom) q = q.gte("created_at", new Date(dateFrom).toISOString());
       if (dateTo) {
         const end = new Date(dateTo); end.setHours(23, 59, 59, 999);
@@ -130,11 +147,14 @@ function HylaLeads() {
     const total = leads.length;
     const hot = leads.filter((l) => (l.score ?? 0) >= 60).length;
     const sales = leads.filter((l) => l.status === "sale").length;
-    const avg = total ? Math.round(leads.reduce((s, l) => s + (l.score ?? 0), 0) / total) : 0;
+    // Average only over leads that actually have a score; leads without one
+    // (e.g. from sources without quiz scoring) must not drag the average down.
+    const scored = leads.filter((l) => l.score != null);
+    const avg = scored.length ? Math.round(scored.reduce((s, l) => s + l.score, 0) / scored.length) : 0;
     return { total, hot, sales, avg };
   }, [leads]);
 
-  const resetFilters = () => { setStatus("all"); setOperatorId("all"); setDateFrom(""); setDateTo(""); setSearch(""); setFollowUp("all"); };
+  const resetFilters = () => { setStatus("all"); setOperatorId("all"); setSource("all"); setDateFrom(""); setDateTo(""); setSearch(""); setFollowUp("all"); };
 
   const openClose = (lead: any) => {
     setClosingLead(lead);
@@ -178,7 +198,7 @@ function HylaLeads() {
   return (
     <div className="p-6 md:p-8 space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">HYLA — лиды</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Лиды</h1>
         <p className="mt-1 text-sm text-muted-foreground">Заявки с рекламной кампании HYLA. Скоринг по результатам квиза.</p>
       </div>
 
@@ -197,7 +217,7 @@ function HylaLeads() {
       </div>
 
       <div className="rounded-2xl border border-border bg-gradient-surface shadow-card p-4 space-y-3">
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
           <div className="md:col-span-2">
             <Label className="text-xs">Поиск</Label>
             <Input placeholder="Имя или телефон" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -220,6 +240,17 @@ function HylaLeads() {
                 <SelectItem value="all">Все</SelectItem>
                 <SelectItem value="none">Не назначен</SelectItem>
                 {operators.map((o) => <SelectItem key={o.user_id} value={o.user_id}>{o.full_name || "Оператор"}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Источник</Label>
+            <Select value={source} onValueChange={setSource}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все</SelectItem>
+                <SelectItem value="none">Не указан</SelectItem>
+                {sourceOptions.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -273,6 +304,7 @@ function HylaLeads() {
               <TableHead>Город / район</TableHead>
               <TableHead>Скоринг</TableHead>
               <TableHead>Статус</TableHead>
+              <TableHead>Источник</TableHead>
               <TableHead>След. контакт</TableHead>
               <TableHead>Оператор</TableHead>
               <TableHead className="whitespace-nowrap">Дата</TableHead>
@@ -280,8 +312,8 @@ function HylaLeads() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading && <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-12">Загрузка…</TableCell></TableRow>}
-            {!isLoading && filteredLeads.length === 0 && <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-12">Лидов нет</TableCell></TableRow>}
+            {isLoading && <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-12">Загрузка…</TableCell></TableRow>}
+            {!isLoading && filteredLeads.length === 0 && <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-12">Лидов нет</TableCell></TableRow>}
             {filteredLeads.map((l) => {
               const nc = l.next_contact_at ? new Date(l.next_contact_at) : null;
               const isOverdue = nc && nc.getTime() < todayStart.getTime();
@@ -292,15 +324,20 @@ function HylaLeads() {
                   <TableCell className="text-xs">{l.phone}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{[l.city, l.district].filter(Boolean).join(" / ") || "—"}</TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={
-                      (l.score ?? 0) >= 60 ? "bg-success/15 text-success border-success/30"
-                      : (l.score ?? 0) >= 30 ? "bg-warning/15 text-warning border-warning/30"
-                      : "bg-muted text-muted-foreground border-border"
-                    }>{l.score ?? 0}</Badge>
+                    {l.score == null ? (
+                      <span className="text-muted-foreground">—</span>
+                    ) : (
+                      <Badge variant="outline" className={
+                        l.score >= 60 ? "bg-success/15 text-success border-success/30"
+                        : l.score >= 30 ? "bg-warning/15 text-warning border-warning/30"
+                        : "bg-muted text-muted-foreground border-border"
+                      }>{l.score}</Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className={STATUS_COLOR[l.status] || ""}>{STATUS[l.status] || l.status}</Badge>
                   </TableCell>
+                  <TableCell className="text-xs">{l.source || <span className="text-muted-foreground">—</span>}</TableCell>
                   <TableCell className="text-xs whitespace-nowrap">
                     {nc ? (
                       <span className={`inline-flex items-center gap-1 ${isOverdue ? "text-destructive" : isToday ? "text-warning" : "text-muted-foreground"}`}>

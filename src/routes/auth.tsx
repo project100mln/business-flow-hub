@@ -13,18 +13,54 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
+// check_invite() was added by the multitenancy migration and isn't in the
+// generated Supabase types yet, so call it through an untyped client handle.
+const rpc = supabase as unknown as {
+  rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
+};
+
+const roleLabels: Record<string, string> = {
+  admin: "Собственник",
+  manager: "Менеджер",
+  operator: "Колл-центр",
+  installer: "Монтажник",
+  finance: "Финансист",
+  coordinator: "Координатор",
+};
+
+type Invite = { token: string; companyName: string; role: string; valid: boolean };
+
 function AuthPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [tab, setTab] = useState("login");
+  const [invite, setInvite] = useState<Invite | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) navigate({ to: "/app/dashboard" });
     });
   }, [navigate]);
+
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get("invite");
+    if (!token) return;
+    setTab("signup");
+    rpc.rpc("check_invite", { _token: token }).then(({ data }) => {
+      const row = (Array.isArray(data) ? data[0] : data) as
+        | { company_name: string; role: string; is_valid: boolean }
+        | undefined;
+      setInvite({
+        token,
+        companyName: row?.company_name ?? "",
+        role: row?.role ?? "",
+        valid: !!row?.is_valid,
+      });
+    });
+  }, []);
 
   const onLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,7 +77,10 @@ function AuthPage() {
     setLoading(true);
     const { error } = await supabase.auth.signUp({
       email, password,
-      options: { emailRedirectTo: window.location.origin, data: { full_name: fullName } },
+      options: {
+        emailRedirectTo: window.location.origin,
+        data: { full_name: fullName, ...(invite ? { invite_token: invite.token } : {}) },
+      },
     });
     setLoading(false);
     if (error) return toast.error(error.message);
@@ -64,7 +103,7 @@ function AuthPage() {
         </Link>
 
         <div className="rounded-2xl border border-border bg-gradient-surface p-8 shadow-card">
-          <Tabs defaultValue="login">
+          <Tabs value={tab} onValueChange={setTab}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Вход</TabsTrigger>
               <TabsTrigger value="signup">Регистрация</TabsTrigger>
@@ -87,6 +126,20 @@ function AuthPage() {
             </TabsContent>
 
             <TabsContent value="signup" className="space-y-4 pt-6">
+              {invite && (
+                invite.valid ? (
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm">
+                    Вас пригласили в компанию <span className="font-semibold">{invite.companyName}</span>
+                    {invite.role && (
+                      <> — роль «{roleLabels[invite.role] ?? invite.role}»</>
+                    )}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+                    Приглашение недействительно или истекло. Зарегистрироваться можно, но без доступа к компании — запросите новую ссылку.
+                  </div>
+                )
+              )}
               <form onSubmit={onSignup} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="name-s">Полное имя</Label>
@@ -103,7 +156,11 @@ function AuthPage() {
                 <Button type="submit" disabled={loading} className="w-full bg-gradient-primary hover:opacity-90">
                   {loading ? "Создаём..." : "Создать аккаунт"}
                 </Button>
-                <p className="text-xs text-muted-foreground">Первый зарегистрированный пользователь автоматически становится администратором.</p>
+                {!invite && (
+                  <p className="text-xs text-muted-foreground">
+                    Доступ к компании выдаётся по приглашению. Без него аккаунт будет создан, но без компании и роли.
+                  </p>
+                )}
               </form>
             </TabsContent>
           </Tabs>

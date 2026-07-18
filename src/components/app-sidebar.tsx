@@ -8,26 +8,28 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 
+// `module` maps a menu item to a key in companies.enabled_modules. Items
+// without a module (e.g. Дашборд) are always shown.
 const salesItems = [
   { title: "Дашборд", url: "/app/dashboard", icon: LayoutDashboard },
-  { title: "База обзвона", url: "/app/calls", icon: Headphones },
-  { title: "HYLA лиды", url: "/app/hyla", icon: Sparkles },
-  { title: "Клиенты", url: "/app/clients", icon: Users },
-  { title: "Объекты (B2B)", url: "/app/objects", icon: Building2 },
-  { title: "Продажи", url: "/app/deals", icon: Briefcase },
-  { title: "Задачи", url: "/app/tasks", icon: ListChecks },
+  { title: "База обзвона", url: "/app/calls", icon: Headphones, module: "cold_calls" },
+  { title: "Лиды", url: "/app/hyla", icon: Sparkles, module: "hyla_leads" },
+  { title: "Клиенты", url: "/app/clients", icon: Users, module: "clients" },
+  { title: "Объекты (B2B)", url: "/app/objects", icon: Building2, module: "objects" },
+  { title: "Продажи", url: "/app/deals", icon: Briefcase, module: "deals" },
+  { title: "Задачи", url: "/app/tasks", icon: ListChecks, module: "tasks" },
 ];
 
 const serviceItems = [
-  { title: "Заявки (Координатор)", url: "/app/coordinator", icon: ClipboardList },
-  { title: "Установки", url: "/app/installations", icon: Wrench },
-  { title: "Сервис", url: "/app/service", icon: LifeBuoy },
-  { title: "Рассрочки", url: "/app/installments", icon: CreditCard },
+  { title: "Заявки (Координатор)", url: "/app/coordinator", icon: ClipboardList, module: "service" },
+  { title: "Установки", url: "/app/installations", icon: Wrench, module: "installations" },
+  { title: "Сервис", url: "/app/service", icon: LifeBuoy, module: "service" },
+  { title: "Рассрочки", url: "/app/installments", icon: CreditCard, module: "installments" },
 ];
 
 const accountingItems = [
-  { title: "Склад", url: "/app/products", icon: Boxes },
-  { title: "Финансы", url: "/app/finance", icon: Wallet, managerOnly: true },
+  { title: "Склад", url: "/app/products", icon: Boxes, module: "warehouse" },
+  { title: "Финансы", url: "/app/finance", icon: Wallet, module: "finance", managerOnly: true },
 ];
 
 export function AppSidebar() {
@@ -35,7 +37,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const currentPath = useRouterState({ select: (r) => r.location.pathname });
   const navigate = useNavigate();
-  const { profile, roles, isAdminOrManager, hasRole } = useAuth();
+  const { profile, roles, isAdminOrManager, hasRole, hasModule } = useAuth();
 
   const isActive = (p: string) => currentPath === p || currentPath.startsWith(p + "/");
 
@@ -68,7 +70,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Продажи</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {salesItems.map((item) => (
+              {salesItems.filter((i) => !i.module || hasModule(i.module)).map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton asChild isActive={isActive(item.url)}>
                     <Link to={item.url} className="flex items-center gap-2">
@@ -86,7 +88,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Сервис</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {serviceItems.map((item) => (
+              {serviceItems.filter((i) => !i.module || hasModule(i.module)).map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton asChild isActive={isActive(item.url)}>
                     <Link to={item.url} className="flex items-center gap-2">
@@ -105,6 +107,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {accountingItems
+                .filter((i) => !i.module || hasModule(i.module))
                 .filter((i) => !i.managerOnly || isAdminOrManager || hasRole("finance"))
                 .map((item) => (
                   <SidebarMenuItem key={item.url}>
@@ -116,25 +119,25 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
-              {hasRole("admin") && (
-                <>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={isActive("/app/team")}>
-                      <Link to="/app/team" className="flex items-center gap-2">
-                        <UserCog className="size-4" />
-                        {!collapsed && <span>Сотрудники</span>}
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={isActive("/app/owner")}>
-                      <Link to="/app/owner" className="flex items-center gap-2">
-                        <Crown className="size-4" />
-                        {!collapsed && <span>Собственник</span>}
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </>
+              {hasRole("admin") && hasModule("staff") && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/app/team")}>
+                    <Link to="/app/team" className="flex items-center gap-2">
+                      <UserCog className="size-4" />
+                      {!collapsed && <span>Сотрудники</span>}
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+              {hasRole("admin") && hasModule("owner") && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/app/owner")}>
+                    <Link to="/app/owner" className="flex items-center gap-2">
+                      <Crown className="size-4" />
+                      {!collapsed && <span>Собственник</span>}
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               )}
             </SidebarMenu>
           </SidebarGroupContent>
