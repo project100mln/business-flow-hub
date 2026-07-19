@@ -1,7 +1,16 @@
 -- ============================================================
 -- SERVICE OPERATIONS V1 — проверка фазы ENFORCE
--- Запускать на чистой локальной базе ПОСЛЕ применения ВСЕХ миграций,
--- ВКЛЮЧАЯ ...expand.sql И ...enforce.sql.
+--
+-- ВНИМАНИЕ: запускать ТОЛЬКО ПОСЛЕ того как ENFORCE будет добавлен
+-- отдельной БУДУЩЕЙ миграцией (см. supabase/deferred/service_operations_v1_enforce.sql
+-- и docs/service-operations-v1-rollout.md, шаги G–H). Сейчас ENFORCE НЕ входит
+-- в supabase/migrations и НЕ применяется через `supabase db push`, поэтому на
+-- этой стадии данный verify запускать НЕ нужно — он упадёт (строгих правил ещё нет).
+--
+-- Запускать на базе ПОСЛЕ применения ВСЕХ миграций, ВКЛЮЧАЯ expand И будущую
+-- enforce-миграцию. НЕ путать с preflight: preflight (…_enforce_preflight.sql)
+-- гоняется на реальных данных ДО ENFORCE и должен вернуть 0 строк; этот verify —
+-- функциональная проверка самих правил ПОСЛЕ их включения.
 --
 --   psql "$LOCAL_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/service_operations_v1_enforce_verify.sql
 --
