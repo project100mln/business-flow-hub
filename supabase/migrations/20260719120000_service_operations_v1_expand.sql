@@ -1,14 +1,18 @@
 -- ============================================================
--- OrbitOS: SERVICE OPERATIONS V1
--- Диспетчеризация сервисных заявок, планы обслуживания,
--- журнал событий, перезвоны/обратная связь через tasks.
+-- OrbitOS: SERVICE OPERATIONS V1 — ФАЗА EXPAND
+-- Полностью обратно совместима со СТАРЫМ интерфейсом app.service.tsx.
 --
--- ПРАВИЛО: только additive. Никаких DROP таблиц/колонок,
--- никаких переименований, никакого удаления данных.
--- Единственные DROP здесь — DROP TRIGGER IF EXISTS перед
--- пересозданием собственных новых триггеров (идемпотентность).
--- Существующие таблицы/политики/автоматика (в т.ч. авто-задача
--- «Замена картриджей» после продажи) НЕ трогаются.
+-- ПРАВИЛО: только additive. Никаких DROP таблиц/колонок/статусов/политик,
+-- никакого удаления данных. Единственные DROP — DROP TRIGGER/POLICY IF EXISTS
+-- перед пересозданием СОБСТВЕННЫХ новых объектов (идемпотентность).
+--
+-- КЛЮЧЕВОЕ ОТЛИЧИЕ ОТ ENFORCE: в этой фазе НЕТ ни одного RAISE EXCEPTION
+-- на INSERT/UPDATE service_requests. Старые переходы new→in_progress→done,
+-- завершение без resolution и редактирование завершённых заявок — проходят.
+-- BEFORE-триггер только автозаполняет временные поля.
+--
+-- Существующая автоматика «Замена картриджей» после продажи (deals_automation)
+-- НЕ трогается и остаётся независимой от планов обслуживания.
 -- ============================================================
 
 -- ============================================================
@@ -70,6 +74,8 @@ CREATE TRIGGER trg_service_plans_updated BEFORE UPDATE ON public.service_plans
 
 -- ============================================================
 -- 2. SERVICE_REQUESTS — новые поля (только ADD COLUMN IF NOT EXISTS)
+-- Все новые поля nullable (кроме service_type/reschedule_count с DEFAULT) —
+-- старый INSERT/UPDATE, не передающий их, продолжает работать.
 -- ============================================================
 ALTER TABLE public.service_requests
   ADD COLUMN IF NOT EXISTS service_type text NOT NULL DEFAULT 'one_time',
@@ -189,60 +195,35 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_tasks_feedback_per_request
   WHERE task_type = 'service_feedback';
 
 -- ============================================================
--- 5. FSM статусов + автоштамп временных меток (BEFORE UPDATE)
+-- 5. МЯГКИЙ BEFORE UPDATE — ТОЛЬКО автозаполнение временных меток.
+-- НЕТ RAISE EXCEPTION: старый интерфейс не может быть отклонён.
+-- Строгие правила (FSM, обязательный resolution и т.д.) добавляются
+-- отдельной фазой ENFORCE через CREATE OR REPLACE этой же функции.
 -- ============================================================
-CREATE OR REPLACE FUNCTION public.service_request_validate()
+CREATE OR REPLACE FUNCTION public.service_request_before_update()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $fn$
-DECLARE ok boolean;
 BEGIN
-  -- Меняется только при смене статуса; обычное сохранение не трогаем.
+  -- Реагируем только на СМЕНУ статуса; обычное сохранение (заметки и т.п.) не трогаем.
   IF NEW.status IS NOT DISTINCT FROM OLD.status THEN
     RETURN NEW;
   END IF;
 
-  -- Терминальные статусы менять нельзя.
-  IF OLD.status IN ('done','cancelled') THEN
-    RAISE EXCEPTION 'service: статус "%" терминальный — переход в "%" запрещён', OLD.status, NEW.status;
-  END IF;
-
-  ok := CASE OLD.status
-    WHEN 'new'         THEN NEW.status IN ('callback','scheduled','cancelled')
-    WHEN 'callback'    THEN NEW.status IN ('callback','scheduled','cancelled')
-    WHEN 'scheduled'   THEN NEW.status IN ('confirmed','rescheduled','cancelled')
-    WHEN 'confirmed'   THEN NEW.status IN ('assigned','rescheduled','cancelled')
-    WHEN 'assigned'    THEN NEW.status IN ('en_route','rescheduled','cancelled')
-    WHEN 'en_route'    THEN NEW.status IN ('arrived','problem','rescheduled')
-    WHEN 'arrived'     THEN NEW.status IN ('in_progress','problem')
-    WHEN 'in_progress' THEN NEW.status IN ('done','problem')
-    WHEN 'problem'     THEN NEW.status IN ('in_progress','rescheduled','done','cancelled')
-    WHEN 'rescheduled' THEN NEW.status IN ('scheduled','cancelled')
-    ELSE false
-  END;
-  IF NOT ok THEN
-    RAISE EXCEPTION 'service: недопустимый переход "%" → "%"', OLD.status, NEW.status;
-  END IF;
-
-  -- Автозаполнение временных меток
+  -- Автозаполнение временных меток (идемпотентно: только если пусто)
   IF NEW.status = 'confirmed'   AND NEW.confirmed_at IS NULL THEN NEW.confirmed_at := now(); END IF;
   IF NEW.status = 'en_route'    AND NEW.departed_at  IS NULL THEN NEW.departed_at  := now(); END IF;
   IF NEW.status = 'arrived'     AND NEW.arrived_at   IS NULL THEN NEW.arrived_at   := now(); END IF;
   IF NEW.status = 'in_progress' AND NEW.started_at   IS NULL THEN NEW.started_at   := now(); END IF;
 
+  -- Завершение — БЕЗ требования resolution в фазе EXPAND.
+  -- completed_at и feedback_due_at заполняются автоматически, чтобы автоматика
+  -- обратной связи работала даже при старом сценарии new/in_progress → done.
   IF NEW.status = 'done' THEN
-    IF NEW.resolution IS NULL OR length(trim(NEW.resolution)) = 0 THEN
-      RAISE EXCEPTION 'service: нельзя завершить заявку без описания результата (resolution)';
-    END IF;
     IF NEW.completed_at IS NULL THEN NEW.completed_at := now(); END IF;
     NEW.feedback_due_at := NEW.completed_at + interval '1 day';
   END IF;
 
+  -- Перенос — бухгалтерия дат без требований (требования появятся в ENFORCE).
   IF NEW.status = 'rescheduled' THEN
-    IF NEW.reschedule_reason IS NULL OR length(trim(NEW.reschedule_reason)) = 0 THEN
-      RAISE EXCEPTION 'service: перенос требует причину (reschedule_reason)';
-    END IF;
-    IF NEW.scheduled_at IS NULL OR NEW.scheduled_at IS NOT DISTINCT FROM OLD.scheduled_at THEN
-      RAISE EXCEPTION 'service: перенос требует новую дату (scheduled_at)';
-    END IF;
     NEW.rescheduled_from := OLD.scheduled_at;
     NEW.reschedule_count := COALESCE(OLD.reschedule_count, 0) + 1;
   END IF;
@@ -253,8 +234,10 @@ $fn$;
 
 -- ============================================================
 -- 6. Кросс-компанийная защита ссылки на план (BEFORE INSERT/UPDATE).
--- Имя *_zguard — чтобы триггер шёл ПОСЛЕ trg_..._set_company (алфавит),
--- когда company_id уже проставлен.
+-- НЕ отклоняет старый интерфейс: старый UI никогда не задаёт service_plan_id
+-- (поле = NULL), поэтому ветка с RAISE недостижима. Срабатывает лишь при
+-- попытке сослаться на план ЧУЖОЙ компании (что и должно быть запрещено).
+-- Имя *_zguard — чтобы триггер шёл ПОСЛЕ trg_..._set_company (алфавит).
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.service_request_guard()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $fn$
@@ -276,7 +259,7 @@ CREATE TRIGGER trg_service_requests_zguard
   FOR EACH ROW EXECUTE FUNCTION public.service_request_guard();
 
 -- ============================================================
--- 7. AFTER INSERT: журнал «создано»
+-- 7. AFTER INSERT: журнал «создано» (одно осмысленное событие на заявку)
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.service_request_after_insert()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $fn$
@@ -301,7 +284,14 @@ CREATE TRIGGER trg_service_after_insert AFTER INSERT ON public.service_requests
 -- ============================================================
 -- 8. AFTER UPDATE: журнал перехода + автообратная связь +
 -- продолжение плана обслуживания + задача «предстоящий сервис».
--- Всё идемпотентно.
+-- Никогда не отклоняет исходную операцию. Всё идемпотентно:
+--   * событие пишется ТОЛЬКО при реальной смене статуса
+--     (обычное редактирование заметки историю не засоряет);
+--   * feedback-задача защищена uq_tasks_feedback_per_request (ON CONFLICT DO NOTHING);
+--   * следующая заявка — только при активном плане и только один раз
+--     (NOT EXISTS previous=NEW.id + UNIQUE uq_sr_previous).
+-- Механизм НЕ пересекается со старой cartridge-автоматикой: та создаёт
+-- задачу-напоминание «Замена картриджей» по СДЕЛКЕ, здесь — service_request по ПЛАНУ.
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.service_request_after_status()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $fn$
@@ -382,9 +372,11 @@ BEGIN
 END;
 $fn$;
 
-DROP TRIGGER IF EXISTS trg_service_validate ON public.service_requests;
-CREATE TRIGGER trg_service_validate BEFORE UPDATE ON public.service_requests
-  FOR EACH ROW EXECUTE FUNCTION public.service_request_validate();
+-- Триггеры service_requests: мягкий BEFORE UPDATE + AFTER UPDATE.
+DROP TRIGGER IF EXISTS trg_service_validate ON public.service_requests;      -- на случай прежней сборки
+DROP TRIGGER IF EXISTS trg_service_before_update ON public.service_requests;
+CREATE TRIGGER trg_service_before_update BEFORE UPDATE ON public.service_requests
+  FOR EACH ROW EXECUTE FUNCTION public.service_request_before_update();
 
 DROP TRIGGER IF EXISTS trg_service_after_status ON public.service_requests;
 CREATE TRIGGER trg_service_after_status AFTER UPDATE ON public.service_requests
@@ -427,5 +419,6 @@ CREATE INDEX IF NOT EXISTS idx_clients_company_phone_norm
   ON public.clients (company_id, (regexp_replace(phone, '\D', '', 'g')));
 
 -- ============================================================
--- Готово. Все изменения additive; исторические данные не тронуты.
+-- EXPAND готово. Ни одного RAISE на операциях старого интерфейса.
+-- Строгие правила — в отдельной миграции ...enforce.sql (после выкладки нового UI).
 -- ============================================================
