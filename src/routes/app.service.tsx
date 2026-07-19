@@ -1,174 +1,465 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Pencil } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Plus, Trash2, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
+import {
+  db,
+  SERVICE_STATUS,
+  STATUS_TONE,
+  PRIORITY,
+  SERVICE_TYPE,
+  TRANSITIONS,
+  fmtDateTime,
+  isOverdue,
+  isToday,
+} from "@/lib/service";
+import { ServiceRequestDialog } from "@/components/service/service-request-dialog";
+import { ServiceRequestDetails } from "@/components/service/service-request-details";
+import { ServiceBoard } from "@/components/service/service-board";
+import { ServiceCallbackQueue } from "@/components/service/service-callback-queue";
+import { ServicePlans } from "@/components/service/service-plans";
 
 export const Route = createFileRoute("/app/service")({ component: Service });
 
-const STATUS: Record<string, string> = { new: "Новая", in_progress: "В работе", done: "Завершена", cancelled: "Отменена" };
-const PRIORITY: Record<string, string> = { low: "Низкий", normal: "Обычный", high: "Высокий", urgent: "Срочный" };
-
-type Form = {
-  id?: string; client_id: string; object_id: string; issue: string;
-  status: string; priority: string; scheduled_at: string; cost: string; notes: string;
-};
-const empty: Form = { client_id: "", object_id: "", issue: "", status: "new", priority: "normal", scheduled_at: "", cost: "", notes: "" };
-
 function Service() {
   const qc = useQueryClient();
-  const { hasRole } = useAuth();
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<Form>(empty);
+  const { hasRole, user } = useAuth();
+  const isAdmin = hasRole("admin");
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<any | null>(null);
+  const [detail, setDetail] = useState<any | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  // filters
+  const [search, setSearch] = useState("");
+  const [fStatus, setFStatus] = useState("all");
+  const [fPriority, setFPriority] = useState("all");
+  const [fCoordinator, setFCoordinator] = useState("all");
+  const [fAssignee, setFAssignee] = useState("all");
+  const [fType, setFType] = useState("all");
+  const [fDate, setFDate] = useState("");
+  const [onlyOverdue, setOnlyOverdue] = useState(false);
+  const [onlyToday, setOnlyToday] = useState(false);
 
   const { data: items = [] } = useQuery({
     queryKey: ["service"],
-    queryFn: async () => (await supabase.from("service_requests").select("*, clients(full_name), objects(name)").order("created_at", { ascending: false })).data ?? [],
+    queryFn: async () =>
+      (
+        await db
+          .from("service_requests")
+          .select("*, clients(full_name, phone, address), objects(name, address)")
+          .order("created_at", { ascending: false })
+      ).data ?? [],
   });
-  const { data: clients = [] } = useQuery({ queryKey: ["clients-min"], queryFn: async () => (await supabase.from("clients").select("id, full_name").order("full_name")).data ?? [] });
-  const { data: objects = [] } = useQuery({ queryKey: ["objects-min"], queryFn: async () => (await supabase.from("objects").select("id, name").order("name")).data ?? [] });
+  const { data: staff = [] } = useQuery({
+    queryKey: ["service-staff"],
+    queryFn: async () =>
+      (await supabase.from("profiles").select("id, full_name").order("full_name")).data ?? [],
+  });
+  const { data: serviceTasks = [] } = useQuery({
+    queryKey: ["service-callbacks-queue"],
+    queryFn: async () =>
+      (
+        await db
+          .from("tasks")
+          .select("id, task_type, status, due_at")
+          .in("task_type", ["service_callback", "service_feedback", "service_upcoming"])
+      ).data ?? [],
+  });
 
-  const save = useMutation({
-    mutationFn: async () => {
-      const user = (await supabase.auth.getUser()).data.user;
-      const payload: any = {
-        client_id: form.client_id || null,
-        object_id: form.object_id || null,
-        issue: form.issue,
-        status: form.status,
-        priority: form.priority,
-        scheduled_at: form.scheduled_at || null,
-        cost: form.cost ? Number(form.cost) : 0,
-        notes: form.notes || null,
-      };
-      if (form.id) {
-        const { error } = await supabase.from("service_requests").update(payload).eq("id", form.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("service_requests").insert({ ...payload, created_by: user?.id, assignee_id: user?.id });
-        if (error) throw error;
-      }
+  const staffName = (uid?: string) => (staff as any[]).find((s) => s.id === uid)?.full_name || "—";
+
+  const del = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await db.from("service_requests").delete().eq("id", id);
+      if (error) throw error;
     },
     onSuccess: () => {
-      toast.success(form.id ? "Обновлено" : "Заявка создана");
-      setOpen(false); setForm(empty);
+      toast.success("Удалено");
       qc.invalidateQueries({ queryKey: ["service"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const del = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("service_requests").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => { toast.success("Удалено"); qc.invalidateQueries({ queryKey: ["service"] }); },
-    onError: (e: Error) => toast.error(e.message),
-  });
+  // ---- KPIs ----
+  const kpi = useMemo(() => {
+    const list = items as any[];
+    const tks = serviceTasks as any[];
+    const activeCb = tks.filter((t) => t.task_type === "service_callback" && t.status !== "done");
+    return {
+      new: list.filter((i) => i.status === "new").length,
+      today: list.filter(
+        (i) => isToday(i.scheduled_at) && !["done", "cancelled"].includes(i.status),
+      ).length,
+      overdueCb: activeCb.filter((t) => isOverdue(t.due_at)).length,
+      planned: list.filter((i) => ["scheduled", "confirmed", "assigned"].includes(i.status)).length,
+      enroute: list.filter((i) => ["en_route", "arrived"].includes(i.status)).length,
+      working: list.filter((i) => i.status === "in_progress").length,
+      problem: list.filter((i) => ["problem", "rescheduled"].includes(i.status)).length,
+      doneToday: list.filter((i) => i.status === "done" && isToday(i.completed_at)).length,
+      feedbackToday: tks.filter(
+        (t) =>
+          t.task_type === "service_feedback" &&
+          t.status !== "done" &&
+          (isToday(t.due_at) || isOverdue(t.due_at)),
+      ).length,
+    };
+  }, [items, serviceTasks]);
+
+  // ---- filtered list ----
+  const filtered = useMemo(() => {
+    let list = items as any[];
+    if (search.trim()) {
+      const s = search.toLowerCase();
+      list = list.filter(
+        (i) =>
+          (i.issue || "").toLowerCase().includes(s) ||
+          (i.clients?.full_name || "").toLowerCase().includes(s) ||
+          (i.clients?.phone || "").toLowerCase().includes(s) ||
+          (i.objects?.name || "").toLowerCase().includes(s),
+      );
+    }
+    if (fStatus !== "all") list = list.filter((i) => i.status === fStatus);
+    if (fPriority !== "all") list = list.filter((i) => i.priority === fPriority);
+    if (fCoordinator !== "all") list = list.filter((i) => i.coordinator_id === fCoordinator);
+    if (fAssignee !== "all") list = list.filter((i) => i.assignee_id === fAssignee);
+    if (fType !== "all") list = list.filter((i) => (i.service_type || "one_time") === fType);
+    if (fDate) list = list.filter((i) => i.scheduled_at && i.scheduled_at.slice(0, 10) === fDate);
+    if (onlyOverdue)
+      list = list.filter(
+        (i) => isOverdue(i.scheduled_at) && !["done", "cancelled"].includes(i.status),
+      );
+    if (onlyToday) list = list.filter((i) => isToday(i.scheduled_at));
+    return list;
+  }, [
+    items,
+    search,
+    fStatus,
+    fPriority,
+    fCoordinator,
+    fAssignee,
+    fType,
+    fDate,
+    onlyOverdue,
+    onlyToday,
+  ]);
+
+  const openDetail = (r: any) => {
+    setDetail(r);
+    setDetailOpen(true);
+  };
+  const openDetailById = (id: string) => {
+    const r = (items as any[]).find((x) => x.id === id);
+    if (r) openDetail(r);
+  };
+  const nextStep = (r: any) => {
+    if (r.status === "done" || r.status === "cancelled") return "—";
+    const n = TRANSITIONS[r.status]?.[0];
+    return n ? SERVICE_STATUS[n] : "—";
+  };
 
   return (
     <div className="p-6 md:p-8 space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Сервис</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Заявки на обслуживание и ремонт.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Диспетчеризация заявок, перезвоны и обслуживание.
+          </p>
         </div>
-        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setForm(empty); }}>
-          <DialogTrigger asChild><Button className="bg-gradient-primary"><Plus className="size-4 mr-1" />Новая заявка</Button></DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader><DialogTitle>{form.id ? "Редактировать" : "Новая заявка"}</DialogTitle></DialogHeader>
-            <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Клиент</Label>
-                  <Select value={form.client_id} onValueChange={(v) => setForm({ ...form, client_id: v })}>
-                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                    <SelectContent>{clients.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Объект (B2B)</Label>
-                  <Select value={form.object_id} onValueChange={(v) => setForm({ ...form, object_id: v })}>
-                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                    <SelectContent>{objects.map((o: any) => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div><Label>Проблема *</Label><Textarea value={form.issue} onChange={(e) => setForm({ ...form, issue: e.target.value })} /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Статус</Label>
-                  <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{Object.entries(STATUS).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Приоритет</Label>
-                  <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{Object.entries(PRIORITY).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>Дата визита</Label><Input type="datetime-local" value={form.scheduled_at} onChange={(e) => setForm({ ...form, scheduled_at: e.target.value })} /></div>
-                <div><Label>Стоимость, ₸</Label><Input type="number" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} /></div>
-              </div>
-              <div><Label>Заметки</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
-            </div>
-            <DialogFooter>
-              <Button onClick={() => save.mutate()} disabled={!form.issue || save.isPending} className="bg-gradient-primary">Сохранить</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <Button
+          className="bg-gradient-primary"
+          onClick={() => {
+            setEditing(null);
+            setDialogOpen(true);
+          }}
+        >
+          <Plus className="size-4 mr-1" />
+          Новая заявка
+        </Button>
       </div>
 
-      <div className="rounded-2xl border border-border bg-gradient-surface shadow-card overflow-hidden">
-        <Table>
-          <TableHeader><TableRow>
-            <TableHead>Проблема</TableHead><TableHead>Клиент / Объект</TableHead>
-            <TableHead>Приоритет</TableHead><TableHead>Статус</TableHead>
-            <TableHead>Визит</TableHead><TableHead className="text-right">Сумма</TableHead>
-            <TableHead className="w-28 text-right">Действия</TableHead>
-          </TableRow></TableHeader>
-          <TableBody>
-            {items.map((s: any) => (
-              <TableRow key={s.id}>
-                <TableCell className="font-medium max-w-xs truncate">{s.issue}</TableCell>
-                <TableCell className="text-muted-foreground">{s.clients?.full_name || s.objects?.name || "—"}</TableCell>
-                <TableCell><Badge variant="outline">{PRIORITY[s.priority] || s.priority}</Badge></TableCell>
-                <TableCell><Badge variant="outline">{STATUS[s.status] || s.status}</Badge></TableCell>
-                <TableCell className="text-muted-foreground">{s.scheduled_at ? new Date(s.scheduled_at).toLocaleString("ru-RU") : "—"}</TableCell>
-                <TableCell className="text-right">{new Intl.NumberFormat("ru-RU").format(Number(s.cost || 0))} ₸</TableCell>
-                <TableCell className="text-right">
-                  <Button size="icon" variant="ghost" onClick={() => {
-                    setForm({
-                      id: s.id, client_id: s.client_id || "", object_id: s.object_id || "",
-                      issue: s.issue, status: s.status, priority: s.priority,
-                      scheduled_at: s.scheduled_at ? s.scheduled_at.slice(0,16) : "",
-                      cost: String(s.cost || ""), notes: s.notes || "",
-                    });
-                    setOpen(true);
-                  }}><Pencil className="size-4" /></Button>
-                  {hasRole("admin") && <Button size="icon" variant="ghost" onClick={() => confirm("Удалить?") && del.mutate(s.id)}><Trash2 className="size-4 text-destructive" /></Button>}
-                </TableCell>
-              </TableRow>
-            ))}
-            {items.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-12">Заявок пока нет</TableCell></TableRow>}
-          </TableBody>
-        </Table>
+      {/* KPIs */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-3">
+        <Kpi label="Новые" value={kpi.new} />
+        <Kpi label="Сегодня" value={kpi.today} />
+        <Kpi
+          label="Просроч. перезвоны"
+          value={kpi.overdueCb}
+          tone={kpi.overdueCb ? "text-red-600" : ""}
+        />
+        <Kpi label="Запланировано" value={kpi.planned} />
+        <Kpi label="В пути" value={kpi.enroute} />
+        <Kpi label="В работе" value={kpi.working} />
+        <Kpi label="Проблемы" value={kpi.problem} tone={kpi.problem ? "text-red-600" : ""} />
+        <Kpi label="Завершено сегодня" value={kpi.doneToday} />
+        <Kpi label="Обратная связь" value={kpi.feedbackToday} />
       </div>
+
+      <Tabs defaultValue="board">
+        <TabsList>
+          <TabsTrigger value="board">Доска</TabsTrigger>
+          <TabsTrigger value="all">Все заявки</TabsTrigger>
+          <TabsTrigger value="callbacks">Перезвоны</TabsTrigger>
+          <TabsTrigger value="plans">Планы обслуживания</TabsTrigger>
+        </TabsList>
+
+        {/* Доска */}
+        <TabsContent value="board" className="mt-4">
+          <ServiceBoard items={items as any[]} onOpen={openDetail} />
+        </TabsContent>
+
+        {/* Все заявки */}
+        <TabsContent value="all" className="mt-4 space-y-4">
+          {/* фильтры */}
+          <div className="flex flex-wrap gap-2 items-center">
+            <Input
+              placeholder="Поиск…"
+              className="w-48"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <Input
+              type="date"
+              className="w-40"
+              value={fDate}
+              onChange={(e) => setFDate(e.target.value)}
+            />
+            <FilterSelect
+              value={fStatus}
+              onChange={setFStatus}
+              placeholder="Статус"
+              options={SERVICE_STATUS}
+            />
+            <FilterSelect
+              value={fPriority}
+              onChange={setFPriority}
+              placeholder="Приоритет"
+              options={PRIORITY}
+            />
+            <FilterSelect
+              value={fType}
+              onChange={setFType}
+              placeholder="Тип"
+              options={SERVICE_TYPE}
+            />
+            <StaffSelect
+              value={fCoordinator}
+              onChange={setFCoordinator}
+              placeholder="Оператор"
+              staff={staff as any[]}
+            />
+            <StaffSelect
+              value={fAssignee}
+              onChange={setFAssignee}
+              placeholder="Исполнитель"
+              staff={staff as any[]}
+            />
+            <label className="flex items-center gap-1.5 text-sm">
+              <Switch checked={onlyOverdue} onCheckedChange={setOnlyOverdue} />
+              Просроченные
+            </label>
+            <label className="flex items-center gap-1.5 text-sm">
+              <Switch checked={onlyToday} onCheckedChange={setOnlyToday} />
+              Сегодня
+            </label>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-gradient-surface shadow-card overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Клиент</TableHead>
+                  <TableHead>Телефон</TableHead>
+                  <TableHead>Объект/адрес</TableHead>
+                  <TableHead>Проблема</TableHead>
+                  <TableHead>Тип</TableHead>
+                  <TableHead>Оператор</TableHead>
+                  <TableHead>Исполнитель</TableHead>
+                  <TableHead>Дата</TableHead>
+                  <TableHead>Статус</TableHead>
+                  <TableHead>Приоритет</TableHead>
+                  <TableHead className="text-right">Стоимость</TableHead>
+                  <TableHead>Следующий шаг</TableHead>
+                  <TableHead className="w-24 text-right">Действия</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((s) => (
+                  <TableRow key={s.id} className="cursor-pointer" onClick={() => openDetail(s)}>
+                    <TableCell className="font-medium">{s.clients?.full_name || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {s.clients?.phone || "—"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground max-w-[10rem] truncate">
+                      {s.objects?.name || s.clients?.address || s.objects?.address || "—"}
+                    </TableCell>
+                    <TableCell className="max-w-[12rem] truncate">{s.issue}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {SERVICE_TYPE[s.service_type] || "—"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {staffName(s.coordinator_id)}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {staffName(s.assignee_id)}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground whitespace-nowrap">
+                      {fmtDateTime(s.scheduled_at)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={STATUS_TONE[s.status]}>
+                        {SERVICE_STATUS[s.status] || s.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{PRIORITY[s.priority] || s.priority}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right whitespace-nowrap">
+                      {new Intl.NumberFormat("ru-RU").format(Number(s.cost || 0))} ₸
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{nextStep(s)}</TableCell>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <Button size="icon" variant="ghost" onClick={() => openDetail(s)}>
+                        <Eye className="size-4" />
+                      </Button>
+                      {isAdmin && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => confirm("Удалить заявку?") && del.mutate(s.id)}
+                        >
+                          <Trash2 className="size-4 text-destructive" />
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {filtered.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={13} className="text-center text-muted-foreground py-12">
+                      Заявок не найдено
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+
+        {/* Перезвоны */}
+        <TabsContent value="callbacks" className="mt-4">
+          <ServiceCallbackQueue staff={staff as any[]} onOpenRequest={openDetailById} />
+        </TabsContent>
+
+        {/* Планы */}
+        <TabsContent value="plans" className="mt-4">
+          <ServicePlans staff={staff as any[]} isAdmin={isAdmin} />
+        </TabsContent>
+      </Tabs>
+
+      <ServiceRequestDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        editing={editing}
+        currentUserId={user?.id ?? null}
+      />
+      <ServiceRequestDetails
+        request={detail}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        staff={staff as any[]}
+        currentUserId={user?.id ?? null}
+      />
     </div>
+  );
+}
+
+function Kpi({ label, value, tone = "" }: { label: string; value: number; tone?: string }) {
+  return (
+    <div className="rounded-xl border border-border bg-gradient-surface shadow-card px-3 py-2.5">
+      <div className={`text-xl font-semibold ${tone}`}>{value}</div>
+      <div className="text-[11px] text-muted-foreground leading-tight">{label}</div>
+    </div>
+  );
+}
+
+function FilterSelect({
+  value,
+  onChange,
+  placeholder,
+  options,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  options: Record<string, string>;
+}) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className="w-36">
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">{placeholder}: все</SelectItem>
+        {Object.entries(options).map(([k, l]) => (
+          <SelectItem key={k} value={k}>
+            {l}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function StaffSelect({
+  value,
+  onChange,
+  placeholder,
+  staff,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  staff: any[];
+}) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className="w-40">
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">{placeholder}: все</SelectItem>
+        {staff.map((s) => (
+          <SelectItem key={s.id} value={s.id}>
+            {s.full_name || "Без имени"}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
