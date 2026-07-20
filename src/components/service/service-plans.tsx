@@ -11,17 +11,18 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { db, PRIORITY, fmtDateTime } from "@/lib/service";
+import { supabase } from "@/integrations/supabase/client";
+import { PRIORITY, fmtDateTime, type StaffOption } from "@/lib/service";
 
-export function ServicePlans({ staff, isAdmin }: { staff: any[]; isAdmin: boolean }) {
+export function ServicePlans({ staff, isAdmin }: { staff: StaffOption[]; isAdmin: boolean }) {
   const qc = useQueryClient();
-  const staffName = (uid?: string) => staff.find((s) => s.id === uid)?.full_name || "—";
+  const staffName = (uid?: string | null) => staff.find((s) => s.id === uid)?.full_name || "—";
 
   const { data: plans = [] } = useQuery({
     queryKey: ["service-plans"],
     queryFn: async () =>
       (
-        await db
+        await supabase
           .from("service_plans")
           .select("*, clients(full_name)")
           .order("next_visit_at", { ascending: true })
@@ -30,7 +31,7 @@ export function ServicePlans({ staff, isAdmin }: { staff: any[]; isAdmin: boolea
 
   const toggle = useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
-      const { error } = await db.from("service_plans").update({ is_active }).eq("id", id);
+      const { error } = await supabase.from("service_plans").update({ is_active }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -55,7 +56,7 @@ export function ServicePlans({ staff, isAdmin }: { staff: any[]; isAdmin: boolea
           </TableRow>
         </TableHeader>
         <TableBody>
-          {(plans as any[]).map((p) => (
+          {plans.map((p) => (
             <TableRow key={p.id}>
               <TableCell className="font-medium">{p.name}</TableCell>
               <TableCell className="text-muted-foreground">{p.clients?.full_name || "—"}</TableCell>
@@ -76,7 +77,7 @@ export function ServicePlans({ staff, isAdmin }: { staff: any[]; isAdmin: boolea
               </TableCell>
             </TableRow>
           ))}
-          {(plans as any[]).length === 0 && (
+          {plans.length === 0 && (
             <TableRow>
               <TableCell colSpan={7} className="text-center text-muted-foreground py-12">
                 Планов обслуживания пока нет

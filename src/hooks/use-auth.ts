@@ -4,12 +4,6 @@ import type { Session } from "@supabase/supabase-js";
 
 export type AppRole = "admin" | "manager" | "operator" | "installer" | "finance" | "coordinator";
 
-// The multitenancy migration added user_roles.company_id and the companies
-// table (with enabled_modules), but the generated Supabase types haven't been
-// regenerated yet. Route just those queries through an untyped handle so we
-// stay runtime-correct without hand-editing the generated types file.
-const db = supabase as unknown as { from: (table: string) => any };
-
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
@@ -25,11 +19,11 @@ export function useAuth() {
       setSession(s);
       if (s?.user) {
         const [{ data: r }, { data: p }] = await Promise.all([
-          db.from("user_roles").select("role, company_id").eq("user_id", s.user.id),
+          supabase.from("user_roles").select("role, company_id").eq("user_id", s.user.id),
           supabase.from("profiles").select("full_name").eq("id", s.user.id).maybeSingle(),
         ]);
         if (!mounted) return;
-        const rows = (r ?? []) as { role: AppRole; company_id: string | null }[];
+        const rows = r ?? [];
         setRoles(rows.map((x) => x.role));
         setProfile(p ?? null);
 
@@ -37,7 +31,7 @@ export function useAuth() {
         setCompanyId(cid);
 
         if (cid) {
-          const { data: c } = await db
+          const { data: c } = await supabase
             .from("companies")
             .select("enabled_modules")
             .eq("id", cid)
@@ -58,7 +52,10 @@ export function useAuth() {
     };
     supabase.auth.getSession().then(({ data }) => load(data.session));
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => load(s));
-    return () => { mounted = false; sub.subscription.unsubscribe(); };
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   const hasRole = (r: AppRole) => roles.includes(r);

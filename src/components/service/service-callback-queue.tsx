@@ -3,24 +3,25 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { db, fmtDateTime, isOverdue, isToday } from "@/lib/service";
+import { supabase } from "@/integrations/supabase/client";
+import { fmtDateTime, isOverdue, isToday, type StaffOption } from "@/lib/service";
 
 // Очереди перезвонов/сервисных задач: Просроченные, Сегодня, Предстоящие, Без ответа, Завершённые.
 export function ServiceCallbackQueue({
   staff,
   onOpenRequest,
 }: {
-  staff: any[];
+  staff: StaffOption[];
   onOpenRequest: (id: string) => void;
 }) {
   const qc = useQueryClient();
-  const staffName = (uid?: string) => staff.find((s) => s.id === uid)?.full_name || "—";
+  const staffName = (uid?: string | null) => staff.find((s) => s.id === uid)?.full_name || "—";
 
   const { data: tasks = [] } = useQuery({
     queryKey: ["service-callbacks-queue"],
     queryFn: async () =>
       (
-        await db
+        await supabase
           .from("tasks")
           .select("*, clients(full_name, phone)")
           .in("task_type", ["service_callback", "service_feedback", "service_upcoming"])
@@ -30,7 +31,7 @@ export function ServiceCallbackQueue({
 
   const done = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await db.from("tasks").update({ status: "done" }).eq("id", id);
+      const { error } = await supabase.from("tasks").update({ status: "done" }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -41,7 +42,7 @@ export function ServiceCallbackQueue({
   });
 
   const groups = useMemo(() => {
-    const all = tasks as any[];
+    const all = tasks;
     const active = all.filter((t) => t.status !== "done");
     const noAnswer = active.filter(
       (t) => t.task_type === "service_callback" && (t.description || "").includes("Не дозвонились"),
@@ -93,7 +94,7 @@ export function ServiceCallbackQueue({
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className="text-[10px]">
-                      {TYPE_LABEL[t.task_type] || t.task_type}
+                      {TYPE_LABEL[t.task_type ?? ""] || t.task_type}
                     </Badge>
                     <span className="font-medium truncate">{t.clients?.full_name || "—"}</span>
                     {t.clients?.phone && (
@@ -114,7 +115,7 @@ export function ServiceCallbackQueue({
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => onOpenRequest(t.service_request_id)}
+                      onClick={() => t.service_request_id && onOpenRequest(t.service_request_id)}
                     >
                       Заявка
                     </Button>

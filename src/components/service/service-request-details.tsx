@@ -18,7 +18,6 @@ import {
 import { toast } from "sonner";
 import { PhoneCall, History, Info, CalendarClock, ArrowRight } from "lucide-react";
 import {
-  db,
   SERVICE_STATUS,
   STATUS_TONE,
   TRANSITIONS,
@@ -27,6 +26,10 @@ import {
   TASK_TYPE,
   fmtDateTime,
   isOverdue,
+  type ServiceRequestWithRefs,
+  type ServiceRequestUpdate,
+  type ServiceTaskRow,
+  type StaffOption,
 } from "@/lib/service";
 
 export function ServiceRequestDetails({
@@ -36,15 +39,15 @@ export function ServiceRequestDetails({
   staff,
   currentUserId,
 }: {
-  request: any | null;
+  request: ServiceRequestWithRefs | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  staff: any[];
+  staff: StaffOption[];
   currentUserId: string | null;
 }) {
   const qc = useQueryClient();
   const id = request?.id;
-  const staffName = (uid?: string) => staff.find((s) => s.id === uid)?.full_name || "—";
+  const staffName = (uid?: string | null) => staff.find((s) => s.id === uid)?.full_name || "—";
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["service"] });
@@ -64,8 +67,9 @@ export function ServiceRequestDetails({
 
   const changeStatus = useMutation({
     mutationFn: async () => {
+      if (!id) throw new Error("Заявка не выбрана");
       if (!target) throw new Error("Выберите новый статус");
-      const patch: any = { status: target };
+      const patch: ServiceRequestUpdate = { status: target };
       if (target === "done") {
         if (!resolution.trim()) throw new Error("Опишите результат (resolution)");
         patch.resolution = resolution.trim();
@@ -77,7 +81,7 @@ export function ServiceRequestDetails({
         patch.scheduled_at = new Date(newDate).toISOString();
         patch.reschedule_reason = reason.trim();
       }
-      const { error } = await db.from("service_requests").update(patch).eq("id", id);
+      const { error } = await supabase.from("service_requests").update(patch).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -96,37 +100,52 @@ export function ServiceRequestDetails({
   const { data: events = [] } = useQuery({
     queryKey: ["service-events", id],
     enabled: !!id && open,
-    queryFn: async () =>
-      (
-        await db
-          .from("service_events")
-          .select("*")
-          .eq("service_request_id", id)
-          .order("occurred_at", { ascending: false })
-      ).data ?? [],
+    queryFn: async () => {
+      if (!id) return [];
+      return (
+        (
+          await supabase
+            .from("service_events")
+            .select("*")
+            .eq("service_request_id", id)
+            .order("occurred_at", { ascending: false })
+        ).data ?? []
+      );
+    },
   });
 
   // ---- callbacks (tasks) ----
   const { data: callbacks = [] } = useQuery({
     queryKey: ["service-callbacks", id],
     enabled: !!id && open,
-    queryFn: async () =>
-      (
-        await db
-          .from("tasks")
-          .select("*")
-          .eq("service_request_id", id)
-          .order("due_at", { ascending: true })
-      ).data ?? [],
+    queryFn: async () => {
+      if (!id) return [];
+      return (
+        (
+          await supabase
+            .from("tasks")
+            .select("*")
+            .eq("service_request_id", id)
+            .order("due_at", { ascending: true })
+        ).data ?? []
+      );
+    },
   });
 
   // ---- plan ----
   const { data: plan } = useQuery({
     queryKey: ["service-plan", request?.service_plan_id],
     enabled: !!request?.service_plan_id && open,
-    queryFn: async () =>
-      (await db.from("service_plans").select("*").eq("id", request.service_plan_id).maybeSingle())
-        .data,
+    queryFn: async () => {
+      if (!request?.service_plan_id) return null;
+      return (
+        await supabase
+          .from("service_plans")
+          .select("*")
+          .eq("id", request.service_plan_id)
+          .maybeSingle()
+      ).data;
+    },
   });
 
   // new callback form
@@ -135,9 +154,10 @@ export function ServiceRequestDetails({
   const [cbNote, setCbNote] = useState("");
   const createCallback = useMutation({
     mutationFn: async () => {
+      if (!request) throw new Error("Заявка не выбрана");
       if (!cbDue) throw new Error("Укажите дату перезвона");
       if (!cbAssignee) throw new Error("Назначьте ответственного");
-      const { error } = await db.from("tasks").insert({
+      const { error } = await supabase.from("tasks").insert({
         title: "Перезвон клиенту",
         description: cbNote || null,
         status: "todo",
@@ -160,10 +180,10 @@ export function ServiceRequestDetails({
   });
 
   const rescheduleCallback = useMutation({
-    mutationFn: async ({ task, when }: { task: any; when: string }) => {
+    mutationFn: async ({ task, when }: { task: ServiceTaskRow; when: string }) => {
       const stamp = new Date().toLocaleString("ru-RU");
       const appended = `${task.description ? task.description + "\n" : ""}[${stamp}] Не дозвонились, перенос на ${new Date(when).toLocaleString("ru-RU")}`;
-      const { error } = await db
+      const { error } = await supabase
         .from("tasks")
         .update({ due_at: new Date(when).toISOString(), description: appended, status: "todo" })
         .eq("id", task.id);
@@ -178,7 +198,7 @@ export function ServiceRequestDetails({
 
   const closeCallback = useMutation({
     mutationFn: async (taskId: string) => {
-      const { error } = await db.from("tasks").update({ status: "done" }).eq("id", taskId);
+      const { error } = await supabase.from("tasks").update({ status: "done" }).eq("id", taskId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -312,10 +332,10 @@ export function ServiceRequestDetails({
 
           {/* История */}
           <TabsContent value="history" className="space-y-2">
-            {(events as any[]).length === 0 && (
+            {events.length === 0 && (
               <p className="text-sm text-muted-foreground py-6 text-center">Событий пока нет</p>
             )}
-            {(events as any[]).map((e) => (
+            {events.map((e) => (
               <div key={e.id} className="rounded-lg border border-border p-2.5 text-sm">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-medium">
@@ -323,8 +343,8 @@ export function ServiceRequestDetails({
                       "Создано"
                     ) : (
                       <>
-                        {SERVICE_STATUS[e.from_status] || e.from_status || "—"} →{" "}
-                        {SERVICE_STATUS[e.to_status] || e.to_status}
+                        {SERVICE_STATUS[e.from_status ?? ""] || e.from_status || "—"} →{" "}
+                        {SERVICE_STATUS[e.to_status ?? ""] || e.to_status}
                       </>
                     )}
                   </span>
@@ -385,7 +405,7 @@ export function ServiceRequestDetails({
               </Button>
             </div>
 
-            {(callbacks as any[])
+            {callbacks
               .filter((t) => t.task_type === "service_callback")
               .map((t) => (
                 <div key={t.id} className="rounded-lg border border-border p-2.5 text-sm space-y-1">
@@ -422,17 +442,17 @@ export function ServiceRequestDetails({
                   )}
                 </div>
               ))}
-            {(callbacks as any[]).filter((t) => t.task_type !== "service_callback").length > 0 && (
+            {callbacks.filter((t) => t.task_type !== "service_callback").length > 0 && (
               <div className="pt-2">
                 <Label className="text-xs uppercase tracking-wide text-muted-foreground">
                   Прочие задачи
                 </Label>
-                {(callbacks as any[])
+                {callbacks
                   .filter((t) => t.task_type !== "service_callback")
                   .map((t) => (
                     <div key={t.id} className="rounded-lg border border-border p-2.5 text-sm mt-1">
-                      <span className="font-medium">{TASK_TYPE[t.task_type] || t.title}</span> ·{" "}
-                      {fmtDateTime(t.due_at)}
+                      <span className="font-medium">{TASK_TYPE[t.task_type ?? ""] || t.title}</span>{" "}
+                      · {fmtDateTime(t.due_at)}
                     </div>
                   ))}
               </div>

@@ -22,7 +22,7 @@ function StatCard({
   hint,
   tone = "primary",
 }: {
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: string;
   hint?: string;
@@ -62,16 +62,14 @@ function Owner() {
     queryKey: ["owner-dashboard"],
     enabled: hasRole("admin"),
     queryFn: async () => {
-      // Нетипизированный handle для новых полей/таблиц сервиса (types.ts ещё не регенерирован).
-      const sdb = supabase as unknown as { from: (t: string) => any };
       const [deals, txs, installs, installments, payments, service, sTasks] = await Promise.all([
         supabase.from("deals").select("amount, stage"),
         supabase.from("transactions").select("type, amount"),
         supabase.from("installations").select("id, status"),
         supabase.from("installments").select("id, total_amount, status"),
         supabase.from("installment_payments").select("amount, status, due_date"),
-        sdb.from("service_requests").select("cost, status, scheduled_at, completed_at"),
-        sdb.from("tasks").select("task_type, status").eq("task_type", "service_feedback"),
+        supabase.from("service_requests").select("cost, status, scheduled_at, completed_at"),
+        supabase.from("tasks").select("task_type, status").eq("task_type", "service_feedback"),
       ]);
       const won = (deals.data ?? [])
         .filter((d) => d.stage === "won")
@@ -89,12 +87,12 @@ function Owner() {
         (p) => p.status !== "paid" && new Date(p.due_date) < new Date(),
       );
       const overdueAmount = overdue.reduce((s, p) => s + Number(p.amount), 0);
-      const serviceRevenue = ((service.data ?? []) as any[])
+      const serviceRevenue = (service.data ?? [])
         .filter((s) => s.status === "done")
-        .reduce((s: number, x: any) => s + Number(x.cost || 0), 0);
+        .reduce((s, x) => s + Number(x.cost || 0), 0);
 
       // Дополнительные сервисные показатели (additive, не влияют на существующие)
-      const svc = (service.data ?? []) as any[];
+      const svc = service.data ?? [];
       const isSameDay = (v: string | null) => {
         if (!v) return false;
         const d = new Date(v),
@@ -105,7 +103,7 @@ function Owner() {
           d.getDate() === n.getDate()
         );
       };
-      const openStatuses = (s: any) => !["done", "cancelled"].includes(s.status);
+      const openStatuses = (s: { status: string }) => !["done", "cancelled"].includes(s.status);
       const serviceNew = svc.filter((s) => s.status === "new").length;
       const serviceToday = svc.filter((s) => isSameDay(s.scheduled_at) && openStatuses(s)).length;
       const serviceOverdue = svc.filter(
@@ -117,9 +115,7 @@ function Owner() {
       const serviceDone = svc.filter((s) => s.status === "done").length;
       const serviceRescheduled = svc.filter((s) => s.status === "rescheduled").length;
       const serviceProblem = svc.filter((s) => s.status === "problem").length;
-      const feedbackPending = ((sTasks.data ?? []) as any[]).filter(
-        (t) => t.status !== "done",
-      ).length;
+      const feedbackPending = (sTasks.data ?? []).filter((t) => t.status !== "done").length;
 
       return {
         won,

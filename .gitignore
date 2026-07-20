@@ -20,6 +20,9 @@ dist-ssr
 .wrangler/
 .dev.vars
 
+# Supabase CLI: локальное link-состояние (project-ref, pooler-url) — не коммитить
+supabase/.temp/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

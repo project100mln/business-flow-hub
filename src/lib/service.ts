@@ -1,11 +1,20 @@
-import { supabase } from "@/integrations/supabase/client";
+import type { Tables, TablesUpdate } from "@/integrations/supabase/types";
 
-// Новые сервисные таблицы (service_plans, service_events) и новые колонки
-// service_requests/tasks ещё не попали в сгенерированные Supabase-типы
-// (регенерация делается в облаке Lovable/Supabase). Как и use-auth.ts,
-// маршрутизируем эти запросы через нетипизированный handle — рантайм-корректно,
-// без ручной правки сгенерированного types.ts.
-export const db = supabase as unknown as { from: (table: string) => any };
+// ---- Типы строк сервисного модуля (из сгенерированных Supabase-типов) ----
+export type ServiceRequestRow = Tables<"service_requests">;
+export type ServicePlanRow = Tables<"service_plans">;
+export type ServiceEventRow = Tables<"service_events">;
+export type ServiceTaskRow = Tables<"tasks">;
+export type ServiceRequestUpdate = TablesUpdate<"service_requests">;
+
+// Заявка, как её выбирают экраны сервиса: строка + join клиент/объект.
+export type ServiceRequestWithRefs = ServiceRequestRow & {
+  clients?: { full_name: string | null; phone?: string | null } | null;
+  objects?: { name: string | null } | null;
+};
+
+// Справочник сотрудников, как его выбирают экраны сервиса (profiles: id + имя).
+export type StaffOption = { id: string; full_name: string | null };
 
 // ---- Статусы ----
 export const SERVICE_STATUS: Record<string, string> = {

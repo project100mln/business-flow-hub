@@ -23,9 +23,12 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Search, UserPlus, AlertTriangle, Check } from "lucide-react";
 import { toast } from "sonner";
-import { db, PRIORITY, SERVICE_TYPE, normalizePhone } from "@/lib/service";
+import { PRIORITY, SERVICE_TYPE, normalizePhone, type ServiceRequestWithRefs } from "@/lib/service";
 
-type Editing = any | null;
+type Editing = ServiceRequestWithRefs | null;
+
+// Клиент в том виде, в каком его выбирают поиск/создание (усечённый select).
+type ClientOption = { id: string; full_name: string | null; phone: string | null };
 
 const CREATE_STATUSES: Record<string, string> = {
   new: "Новая",
@@ -149,13 +152,13 @@ export function ServiceRequestDialog({
     enabled: showNewClient && normNew.length >= 5,
     queryFn: async () => {
       const { data } = await supabase.from("clients").select("id, full_name, phone");
-      return (data ?? []).filter((c: any) => normalizePhone(c.phone) === normNew);
+      return (data ?? []).filter((c) => normalizePhone(c.phone) === normNew);
     },
   });
 
-  const staffName = (id?: string) => (staff as any[]).find((s) => s.id === id)?.full_name || "—";
+  const staffName = (id?: string | null) => staff.find((s) => s.id === id)?.full_name || "—";
 
-  const selectClient = (c: any) => {
+  const selectClient = (c: ClientOption) => {
     setClientId(c.id);
     setClientLabel(`${c.full_name}${c.phone ? " · " + c.phone : ""}`);
     setClientSearch("");
@@ -192,8 +195,10 @@ export function ServiceRequestDialog({
     mutationFn: async () => {
       if (periodic && !isEdit) {
         // Периодический сервис: создаём план, первую заявку сделает триггер БД.
-        const { error } = await db.from("service_plans").insert({
-          client_id: clientId || null,
+        // client_id в service_plans NOT NULL — форма это уже гарантирует (canSave).
+        if (!clientId) throw new Error("Выберите клиента для плана обслуживания");
+        const { error } = await supabase.from("service_plans").insert({
+          client_id: clientId,
           object_id: objectId || null,
           product_id: productId || null,
           name: planName || issue.slice(0, 60) || "План обслуживания",
@@ -214,7 +219,7 @@ export function ServiceRequestDialog({
         return;
       }
 
-      const payload: any = {
+      const payload = {
         client_id: clientId || null,
         object_id: objectId || null,
         product_id: productId || null,
@@ -229,10 +234,13 @@ export function ServiceRequestDialog({
       };
       if (isEdit) {
         // статус здесь НЕ меняем — переходы идут через карточку заявки (FSM)
-        const { error } = await db.from("service_requests").update(payload).eq("id", editing.id);
+        const { error } = await supabase
+          .from("service_requests")
+          .update(payload)
+          .eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await db
+        const { error } = await supabase
           .from("service_requests")
           .insert({ ...payload, status, created_by: currentUserId });
         if (error) throw error;
@@ -298,7 +306,7 @@ export function ServiceRequestDialog({
                 </div>
                 {matches.length > 0 && (
                   <div className="rounded-lg border border-border divide-y divide-border">
-                    {(matches as any[]).map((c) => (
+                    {matches.map((c) => (
                       <button
                         key={c.id}
                         type="button"
@@ -355,7 +363,7 @@ export function ServiceRequestDialog({
                           <AlertTriangle className="size-4" />
                           Возможный дубль по телефону
                         </div>
-                        {(dupes as any[]).map((c) => (
+                        {dupes.map((c) => (
                           <button
                             key={c.id}
                             type="button"
@@ -393,7 +401,7 @@ export function ServiceRequestDialog({
                   <SelectValue placeholder="—" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(objects as any[]).map((o) => (
+                  {objects.map((o) => (
                     <SelectItem key={o.id} value={o.id}>
                       {o.name}
                     </SelectItem>
@@ -408,7 +416,7 @@ export function ServiceRequestDialog({
                   <SelectValue placeholder="—" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(products as any[]).map((p) => (
+                  {products.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.name}
                     </SelectItem>
@@ -502,7 +510,7 @@ export function ServiceRequestDialog({
                   <SelectValue placeholder="—" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(staff as any[]).map((s) => (
+                  {staff.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
                       {s.full_name || "Без имени"}
                     </SelectItem>
@@ -517,7 +525,7 @@ export function ServiceRequestDialog({
                   <SelectValue placeholder="—" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(staff as any[]).map((s) => (
+                  {staff.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
                       {s.full_name || "Без имени"}
                     </SelectItem>

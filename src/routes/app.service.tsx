@@ -26,7 +26,6 @@ import { Plus, Trash2, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import {
-  db,
   SERVICE_STATUS,
   STATUS_TONE,
   PRIORITY,
@@ -35,6 +34,8 @@ import {
   fmtDateTime,
   isOverdue,
   isToday,
+  type ServiceRequestWithRefs,
+  type StaffOption,
 } from "@/lib/service";
 import { ServiceRequestDialog } from "@/components/service/service-request-dialog";
 import { ServiceRequestDetails } from "@/components/service/service-request-details";
@@ -50,8 +51,8 @@ function Service() {
   const isAdmin = hasRole("admin");
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<any | null>(null);
-  const [detail, setDetail] = useState<any | null>(null);
+  const [editing, setEditing] = useState<ServiceRequestWithRefs | null>(null);
+  const [detail, setDetail] = useState<ServiceRequestWithRefs | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
   // filters
@@ -69,7 +70,7 @@ function Service() {
     queryKey: ["service"],
     queryFn: async () =>
       (
-        await db
+        await supabase
           .from("service_requests")
           .select("*, clients(full_name, phone, address), objects(name, address)")
           .order("created_at", { ascending: false })
@@ -84,18 +85,18 @@ function Service() {
     queryKey: ["service-callbacks-queue"],
     queryFn: async () =>
       (
-        await db
+        await supabase
           .from("tasks")
           .select("id, task_type, status, due_at")
           .in("task_type", ["service_callback", "service_feedback", "service_upcoming"])
       ).data ?? [],
   });
 
-  const staffName = (uid?: string) => (staff as any[]).find((s) => s.id === uid)?.full_name || "—";
+  const staffName = (uid?: string | null) => staff.find((s) => s.id === uid)?.full_name || "—";
 
   const del = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await db.from("service_requests").delete().eq("id", id);
+      const { error } = await supabase.from("service_requests").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -107,8 +108,8 @@ function Service() {
 
   // ---- KPIs ----
   const kpi = useMemo(() => {
-    const list = items as any[];
-    const tks = serviceTasks as any[];
+    const list = items;
+    const tks = serviceTasks;
     const activeCb = tks.filter((t) => t.task_type === "service_callback" && t.status !== "done");
     return {
       new: list.filter((i) => i.status === "new").length,
@@ -132,7 +133,7 @@ function Service() {
 
   // ---- filtered list ----
   const filtered = useMemo(() => {
-    let list = items as any[];
+    let list = items;
     if (search.trim()) {
       const s = search.toLowerCase();
       list = list.filter(
@@ -168,15 +169,15 @@ function Service() {
     onlyToday,
   ]);
 
-  const openDetail = (r: any) => {
+  const openDetail = (r: ServiceRequestWithRefs) => {
     setDetail(r);
     setDetailOpen(true);
   };
   const openDetailById = (id: string) => {
-    const r = (items as any[]).find((x) => x.id === id);
+    const r = items.find((x) => x.id === id);
     if (r) openDetail(r);
   };
-  const nextStep = (r: any) => {
+  const nextStep = (r: ServiceRequestWithRefs) => {
     if (r.status === "done" || r.status === "cancelled") return "—";
     const n = TRANSITIONS[r.status]?.[0];
     return n ? SERVICE_STATUS[n] : "—";
@@ -230,7 +231,7 @@ function Service() {
 
         {/* Доска */}
         <TabsContent value="board" className="mt-4">
-          <ServiceBoard items={items as any[]} onOpen={openDetail} />
+          <ServiceBoard items={items} onOpen={openDetail} />
         </TabsContent>
 
         {/* Все заявки */}
@@ -271,13 +272,13 @@ function Service() {
               value={fCoordinator}
               onChange={setFCoordinator}
               placeholder="Оператор"
-              staff={staff as any[]}
+              staff={staff}
             />
             <StaffSelect
               value={fAssignee}
               onChange={setFAssignee}
               placeholder="Исполнитель"
-              staff={staff as any[]}
+              staff={staff}
             />
             <label className="flex items-center gap-1.5 text-sm">
               <Switch checked={onlyOverdue} onCheckedChange={setOnlyOverdue} />
@@ -373,12 +374,12 @@ function Service() {
 
         {/* Перезвоны */}
         <TabsContent value="callbacks" className="mt-4">
-          <ServiceCallbackQueue staff={staff as any[]} onOpenRequest={openDetailById} />
+          <ServiceCallbackQueue staff={staff} onOpenRequest={openDetailById} />
         </TabsContent>
 
         {/* Планы */}
         <TabsContent value="plans" className="mt-4">
-          <ServicePlans staff={staff as any[]} isAdmin={isAdmin} />
+          <ServicePlans staff={staff} isAdmin={isAdmin} />
         </TabsContent>
       </Tabs>
 
@@ -392,7 +393,7 @@ function Service() {
         request={detail}
         open={detailOpen}
         onOpenChange={setDetailOpen}
-        staff={staff as any[]}
+        staff={staff}
         currentUserId={user?.id ?? null}
       />
     </div>
@@ -445,7 +446,7 @@ function StaffSelect({
   value: string;
   onChange: (v: string) => void;
   placeholder: string;
-  staff: any[];
+  staff: StaffOption[];
 }) {
   return (
     <Select value={value} onValueChange={onChange}>

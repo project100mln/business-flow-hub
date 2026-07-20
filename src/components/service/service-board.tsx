@@ -1,7 +1,20 @@
 import { Badge } from "@/components/ui/badge";
-import { BOARD_GROUPS, SERVICE_STATUS, STATUS_TONE, PRIORITY, fmtDateTime } from "@/lib/service";
+import {
+  BOARD_GROUPS,
+  SERVICE_STATUS,
+  STATUS_TONE,
+  PRIORITY,
+  fmtDateTime,
+  type ServiceRequestWithRefs,
+} from "@/lib/service";
 
-export function ServiceBoard({ items, onOpen }: { items: any[]; onOpen: (r: any) => void }) {
+export function ServiceBoard({
+  items,
+  onOpen,
+}: {
+  items: ServiceRequestWithRefs[];
+  onOpen: (r: ServiceRequestWithRefs) => void;
+}) {
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {BOARD_GROUPS.map((g) => {
