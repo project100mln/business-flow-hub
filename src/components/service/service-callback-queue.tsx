@@ -18,7 +18,7 @@ export function ServiceCallbackQueue({
   const staffName = (uid?: string | null) => staff.find((s) => s.id === uid)?.full_name || "—";
 
   const { data: tasks = [] } = useQuery({
-    queryKey: ["service-callbacks-queue"],
+    queryKey: ["service-tasks", "callbacks", "queue"],
     queryFn: async () =>
       (
         await supabase
@@ -36,7 +36,8 @@ export function ServiceCallbackQueue({
     },
     onSuccess: () => {
       toast.success("Завершено");
-      qc.invalidateQueries({ queryKey: ["service-callbacks-queue"] });
+      // общий префикс: обновляем и KPI, и очередь перезвонов
+      qc.invalidateQueries({ queryKey: ["service-tasks"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });

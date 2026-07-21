@@ -53,7 +53,9 @@ export function ServiceRequestDetails({
     qc.invalidateQueries({ queryKey: ["service"] });
     qc.invalidateQueries({ queryKey: ["service-events", id] });
     qc.invalidateQueries({ queryKey: ["service-callbacks", id] });
-    qc.invalidateQueries({ queryKey: ["service-callbacks-queue"] });
+    // общий префикс: обновляем и KPI (["service-tasks","kpi"]),
+    // и очередь перезвонов (["service-tasks","callbacks","queue"])
+    qc.invalidateQueries({ queryKey: ["service-tasks"] });
   };
 
   // ---- transition state ----

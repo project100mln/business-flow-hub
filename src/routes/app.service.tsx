@@ -82,7 +82,7 @@ function Service() {
       (await supabase.from("profiles").select("id, full_name").order("full_name")).data ?? [],
   });
   const { data: serviceTasks = [] } = useQuery({
-    queryKey: ["service-callbacks-queue"],
+    queryKey: ["service-tasks", "kpi"],
     queryFn: async () =>
       (
         await supabase
