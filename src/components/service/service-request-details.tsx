@@ -264,7 +264,11 @@ export function ServiceRequestDetails({
               </Select>
               <Button
                 size="sm"
-                onClick={() => changeStatus.mutate()}
+                onClick={() => {
+                  if (target === "cancelled" && !confirm("Отменить заявку? Действие фиксируется в истории.")) return;
+                  if (target === "done" && !confirm("Завершить заявку? Действие фиксируется в истории.")) return;
+                  changeStatus.mutate();
+                }}
                 disabled={!target || changeStatus.isPending}
               >
                 <ArrowRight className="size-4" />
