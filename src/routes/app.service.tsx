@@ -246,16 +246,18 @@ function Service() {
             Диспетчеризация заявок, перезвоны и обслуживание.
           </p>
         </div>
-        <Button
-          className="bg-gradient-primary"
-          onClick={() => {
-            setEditing(null);
-            setDialogOpen(true);
-          }}
-        >
-          <Plus className="size-4 mr-1" />
-          Новая заявка
-        </Button>
+        {caps.canCreateRequest && (
+          <Button
+            className="bg-gradient-primary"
+            onClick={() => {
+              setEditing(null);
+              setDialogOpen(true);
+            }}
+          >
+            <Plus className="size-4 mr-1" />
+            Новая заявка
+          </Button>
+        )}
       </div>
 
       {/* KPIs */}
@@ -275,12 +277,19 @@ function Service() {
         <Kpi label="Обратная связь" value={kpi.feedbackToday} />
       </div>
 
-      <Tabs defaultValue="board">
+      <Tabs
+        value={caps.tabs.includes(activeTab) ? activeTab : caps.tabs[0] ?? "board"}
+        onValueChange={(v) => setActiveTab(v as ServiceTab)}
+      >
         <TabsList>
-          <TabsTrigger value="board">Доска</TabsTrigger>
-          <TabsTrigger value="all">Все заявки</TabsTrigger>
-          <TabsTrigger value="callbacks">Перезвоны</TabsTrigger>
-          <TabsTrigger value="plans">Планы обслуживания</TabsTrigger>
+          {caps.tabs.includes("board") && <TabsTrigger value="board">Доска</TabsTrigger>}
+          {caps.tabs.includes("all") && <TabsTrigger value="all">Все заявки</TabsTrigger>}
+          {caps.tabs.includes("callbacks") && (
+            <TabsTrigger value="callbacks">Перезвоны</TabsTrigger>
+          )}
+          {caps.tabs.includes("plans") && (
+            <TabsTrigger value="plans">Планы обслуживания</TabsTrigger>
+          )}
         </TabsList>
 
         {/* Доска */}
@@ -408,7 +417,7 @@ function Service() {
                       <Button size="icon" variant="ghost" onClick={() => openDetail(s)}>
                         <Eye className="size-4" />
                       </Button>
-                      {isAdmin && (
+                      {caps.canDeleteRequest && (
                         <Button
                           size="icon"
                           variant="ghost"
@@ -443,19 +452,26 @@ function Service() {
         </TabsContent>
 
         {/* Перезвоны */}
-        <TabsContent value="callbacks" className="mt-4">
-          <ServiceCallbackQueue staff={staff} onOpenRequest={openDetailById} />
-        </TabsContent>
+        {caps.tabs.includes("callbacks") && (
+          <TabsContent value="callbacks" className="mt-4">
+            <ServiceCallbackQueue
+              staff={staff}
+              onOpenRequest={openDetailById}
+              caps={caps}
+            />
+          </TabsContent>
+        )}
 
         {/* Планы */}
-        <TabsContent value="plans" className="mt-4">
-          <ServicePlans
-            staff={staff}
-            isAdmin={isAdmin}
-            canManage={isAdmin || hasRole("manager") || hasRole("coordinator")}
-            currentUserId={user?.id ?? null}
-          />
-        </TabsContent>
+        {caps.tabs.includes("plans") && (
+          <TabsContent value="plans" className="mt-4">
+            <ServicePlans
+              staff={staff}
+              caps={caps}
+              currentUserId={user?.id ?? null}
+            />
+          </TabsContent>
+        )}
       </Tabs>
 
       <ServiceRequestDialog
@@ -470,6 +486,7 @@ function Service() {
         onOpenChange={setDetailOpen}
         staff={staff}
         currentUserId={user?.id ?? null}
+        caps={caps}
         onEdit={(r) => {
           setEditing(r);
           setDialogOpen(true);
