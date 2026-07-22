@@ -237,7 +237,7 @@ export function ServiceRequestDetails({
                 {SERVICE_STATUS[request.status] || request.status}
               </Badge>
             </SheetTitle>
-            {onEdit && (
+            {onEdit && caps.canEditRequest && (
               <Button
                 size="sm"
                 variant="outline"
@@ -251,7 +251,7 @@ export function ServiceRequestDetails({
         </SheetHeader>
 
         {/* ---- Смена статуса ---- */}
-        {allowed.length > 0 && (
+        {allowed.length > 0 && caps.canChangeStatus && (
           <div className="mt-4 rounded-xl border border-border p-3 space-y-3">
             <Label className="text-xs uppercase tracking-wide text-muted-foreground">
               Сменить статус
