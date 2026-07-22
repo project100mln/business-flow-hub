@@ -38,6 +38,11 @@ import {
   type StaffOption,
 } from "@/lib/service";
 import { serviceKeys, invalidateServiceRequest } from "@/lib/service-queries";
+import {
+  getServiceCapabilities,
+  DENIED_MESSAGE,
+  type ServiceTab,
+} from "@/lib/service-permissions";
 import { ServiceRequestDialog } from "@/components/service/service-request-dialog";
 import { ServiceRequestDetails } from "@/components/service/service-request-details";
 import { ServiceBoard } from "@/components/service/service-board";
@@ -48,8 +53,9 @@ export const Route = createFileRoute("/app/service")({ component: Service });
 
 function Service() {
   const qc = useQueryClient();
-  const { hasRole, user } = useAuth();
-  const isAdmin = hasRole("admin");
+  const { roles, user } = useAuth();
+  const caps = useMemo(() => getServiceCapabilities(roles), [roles]);
+  const isAdmin = roles.includes("admin");
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ServiceRequestWithRefs | null>(null);
