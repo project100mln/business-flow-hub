@@ -10,23 +10,31 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { AlertCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { PRIORITY, fmtDateTime, type StaffOption } from "@/lib/service";
+import { serviceKeys, invalidateServicePlans } from "@/lib/service-queries";
 
 export function ServicePlans({ staff, isAdmin }: { staff: StaffOption[]; isAdmin: boolean }) {
   const qc = useQueryClient();
   const staffName = (uid?: string | null) => staff.find((s) => s.id === uid)?.full_name || "—";
 
-  const { data: plans = [] } = useQuery({
-    queryKey: ["service-plans"],
-    queryFn: async () =>
-      (
-        await supabase
-          .from("service_plans")
-          .select("*, clients(full_name)")
-          .order("next_visit_at", { ascending: true })
-      ).data ?? [],
+  const {
+    data: plans = [],
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: serviceKeys.plans(),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("service_plans")
+        .select("*, clients(full_name)")
+        .order("next_visit_at", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
   });
 
   const toggle = useMutation({
@@ -36,7 +44,7 @@ export function ServicePlans({ staff, isAdmin }: { staff: StaffOption[]; isAdmin
     },
     onSuccess: () => {
       toast.success("Обновлено");
-      qc.invalidateQueries({ queryKey: ["service-plans"] });
+      invalidateServicePlans(qc);
     },
     onError: (e: Error) => toast.error(e.message),
   });
