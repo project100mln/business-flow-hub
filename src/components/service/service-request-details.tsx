@@ -242,7 +242,6 @@ export function ServiceRequestDetails({
           </div>
         </SheetHeader>
 
-
         {/* ---- Смена статуса ---- */}
         {allowed.length > 0 && (
           <div className="mt-4 rounded-xl border border-border p-3 space-y-3">
@@ -265,8 +264,16 @@ export function ServiceRequestDetails({
               <Button
                 size="sm"
                 onClick={() => {
-                  if (target === "cancelled" && !confirm("Отменить заявку? Действие фиксируется в истории.")) return;
-                  if (target === "done" && !confirm("Завершить заявку? Действие фиксируется в истории.")) return;
+                  if (
+                    target === "cancelled" &&
+                    !confirm("Отменить заявку? Действие фиксируется в истории.")
+                  )
+                    return;
+                  if (
+                    target === "done" &&
+                    !confirm("Завершить заявку? Действие фиксируется в истории.")
+                  )
+                    return;
                   changeStatus.mutate();
                 }}
                 disabled={!target || changeStatus.isPending}

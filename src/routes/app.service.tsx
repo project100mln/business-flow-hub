@@ -402,8 +402,7 @@ function Service() {
                         </span>
                       ) : itemsError ? (
                         <span className="inline-flex items-center gap-2 text-destructive">
-                          <AlertCircle className="size-4" /> Ошибка загрузки:{" "}
-                          {itemsError.message}
+                          <AlertCircle className="size-4" /> Ошибка загрузки: {itemsError.message}
                         </span>
                       ) : (
                         "Заявок не найдено"
