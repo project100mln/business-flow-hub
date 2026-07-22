@@ -466,6 +466,7 @@ function Service() {
         onOpenChange={setDialogOpen}
         editing={editing}
         currentUserId={user?.id ?? null}
+        caps={caps}
       />
       <ServiceRequestDetails
         request={detail}
