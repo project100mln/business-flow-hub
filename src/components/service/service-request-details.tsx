@@ -32,6 +32,8 @@ import {
   type StaffOption,
 } from "@/lib/service";
 import { serviceKeys, invalidateServiceRequest } from "@/lib/service-queries";
+import type { ServiceCapabilities } from "@/lib/service-permissions";
+import { DENIED_MESSAGE } from "@/lib/service-permissions";
 
 export function ServiceRequestDetails({
   request,
@@ -39,6 +41,7 @@ export function ServiceRequestDetails({
   onOpenChange,
   staff,
   currentUserId,
+  caps,
   onEdit,
 }: {
   request: ServiceRequestWithRefs | null;
@@ -46,6 +49,7 @@ export function ServiceRequestDetails({
   onOpenChange: (v: boolean) => void;
   staff: StaffOption[];
   currentUserId: string | null;
+  caps: ServiceCapabilities;
   onEdit?: (r: ServiceRequestWithRefs) => void;
 }) {
   const qc = useQueryClient();
@@ -65,6 +69,7 @@ export function ServiceRequestDetails({
 
   const changeStatus = useMutation({
     mutationFn: async () => {
+      if (!caps.canChangeStatus) throw new Error(DENIED_MESSAGE);
       if (!id) throw new Error("Заявка не выбрана");
       if (!target) throw new Error("Выберите новый статус");
       // Клиентская проверка FSM — сервер повторно валидирует триггером.
@@ -162,6 +167,7 @@ export function ServiceRequestDetails({
   const [cbNote, setCbNote] = useState("");
   const createCallback = useMutation({
     mutationFn: async () => {
+      if (!caps.canManageCallbacks) throw new Error(DENIED_MESSAGE);
       if (!request) throw new Error("Заявка не выбрана");
       if (!cbDue) throw new Error("Укажите дату перезвона");
       if (!cbAssignee) throw new Error("Назначьте ответственного");
@@ -189,6 +195,7 @@ export function ServiceRequestDetails({
 
   const rescheduleCallback = useMutation({
     mutationFn: async ({ task, when }: { task: ServiceTaskRow; when: string }) => {
+      if (!caps.canManageCallbacks) throw new Error(DENIED_MESSAGE);
       const stamp = new Date().toLocaleString("ru-RU");
       const appended = `${task.description ? task.description + "\n" : ""}[${stamp}] Не дозвонились, перенос на ${new Date(when).toLocaleString("ru-RU")}`;
       const { error } = await supabase
@@ -206,6 +213,7 @@ export function ServiceRequestDetails({
 
   const closeCallback = useMutation({
     mutationFn: async (taskId: string) => {
+      if (!caps.canManageCallbacks) throw new Error(DENIED_MESSAGE);
       const { error } = await supabase.from("tasks").update({ status: "done" }).eq("id", taskId);
       if (error) throw error;
     },
