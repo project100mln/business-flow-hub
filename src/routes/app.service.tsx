@@ -258,7 +258,13 @@ function Service() {
 
         {/* Доска */}
         <TabsContent value="board" className="mt-4">
-          <ServiceBoard items={items} onOpen={openDetail} />
+          <ServiceBoard
+            items={items}
+            isLoading={itemsLoading}
+            error={itemsError}
+            onRetry={() => refetchItems()}
+            onOpen={openDetail}
+          />
         </TabsContent>
 
         {/* Все заявки */}
