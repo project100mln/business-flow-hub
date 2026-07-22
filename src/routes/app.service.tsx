@@ -55,7 +55,6 @@ function Service() {
   const qc = useQueryClient();
   const { roles, user } = useAuth();
   const caps = useMemo(() => getServiceCapabilities(roles), [roles]);
-  const isAdmin = roles.includes("admin");
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ServiceRequestWithRefs | null>(null);
