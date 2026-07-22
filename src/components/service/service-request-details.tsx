@@ -67,6 +67,11 @@ export function ServiceRequestDetails({
     mutationFn: async () => {
       if (!id) throw new Error("Заявка не выбрана");
       if (!target) throw new Error("Выберите новый статус");
+      // Клиентская проверка FSM — сервер повторно валидирует триггером.
+      const allowedNow = request ? (TRANSITIONS[request.status] ?? []) : [];
+      if (!allowedNow.includes(target)) {
+        throw new Error("Такой переход не допускается из текущего статуса");
+      }
       const patch: ServiceRequestUpdate = { status: target };
       if (target === "done") {
         if (!resolution.trim()) throw new Error("Опишите результат (resolution)");
