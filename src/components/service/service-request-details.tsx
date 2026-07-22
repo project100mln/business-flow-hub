@@ -31,6 +31,7 @@ import {
   type ServiceTaskRow,
   type StaffOption,
 } from "@/lib/service";
+import { serviceKeys, invalidateServiceRequest } from "@/lib/service-queries";
 
 export function ServiceRequestDetails({
   request,
