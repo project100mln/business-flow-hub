@@ -1,26 +1,17 @@
 import type { Database } from "./types";
 
 // company_id во всех операционных таблицах NOT NULL, но заполняется на сервере
-// BEFORE INSERT-триггером set_company_id() из профиля текущего пользователя
-// (см. supabase/migrations/20260718120000_*.sql). Клиент это поле при INSERT
-// не передаёт, и это корректно в рантайме. Сгенерированный types.ts знать о
-// триггере не может и требует company_id в каждом Insert — поэтому здесь, в
-// одном месте, ослабляем ТОЛЬКО Insert.company_id до необязательного, не
-// редактируя сгенерированный файл. При регенерации types.ts править ничего
-// не нужно.
-
+// BEFORE INSERT-триггером set_company_id(). См. types-tenant история.
 type OptionalCompanyId<I> = I extends { company_id: infer V }
   ? Omit<I, "company_id"> & { company_id?: V }
   : I;
 
 // ---------------------------------------------------------------
 // Ручное расширение типов для сервисного модуля.
-// Миграция supabase/migrations/20260719120000_service_operations_v1_expand.sql
-// уже применена в БД (создаёт service_plans, service_events и добавляет
-// поля в service_requests/tasks), но сгенерированный types.ts ещё не
-// перегенерён. Дублируем описание один раз здесь, чтобы TS видел актуальную
-// схему. При регенерации types.ts эти определения станут избыточными —
-// TenantDatabase их автоматически «поглотит» через Omit ниже.
+// Миграция 20260719120000_service_operations_v1_expand.sql применена в БД
+// (service_plans, service_events, доп. поля service_requests/tasks), но
+// сгенерированный types.ts ещё не перегенерён. После регенерации этот блок
+// можно удалить.
 // ---------------------------------------------------------------
 type ServicePlansRow = {
   id: string;
@@ -80,63 +71,79 @@ type TasksExtras = {
   service_request_id: string | null;
 };
 
-type TableShape<Row, Insert, Update> = {
-  Row: Row;
-  Insert: Insert;
-  Update: Update;
-  Relationships: [];
-};
-
 type ExistingTables = Database["public"]["Tables"];
 
-type ExtendedServiceRequests = TableShape<
-  ExistingTables["service_requests"]["Row"] & ServiceRequestsExtras,
-  ExistingTables["service_requests"]["Insert"] & Partial<ServiceRequestsExtras>,
-  ExistingTables["service_requests"]["Update"] & Partial<ServiceRequestsExtras>
->;
+// Расширяем существующие таблицы, СОХРАНЯЯ Relationships из генератора,
+// чтобы PostgREST-джойны типа `clients(full_name)` резолвились типами.
+type ExtendedServiceRequests = Omit<
+  ExistingTables["service_requests"],
+  "Row" | "Insert" | "Update"
+> & {
+  Row: ExistingTables["service_requests"]["Row"] & ServiceRequestsExtras;
+  Insert: ExistingTables["service_requests"]["Insert"] & Partial<ServiceRequestsExtras>;
+  Update: ExistingTables["service_requests"]["Update"] & Partial<ServiceRequestsExtras>;
+};
 
-type ExtendedTasks = TableShape<
-  ExistingTables["tasks"]["Row"] & TasksExtras,
-  ExistingTables["tasks"]["Insert"] & Partial<TasksExtras>,
-  ExistingTables["tasks"]["Update"] & Partial<TasksExtras>
->;
+type ExtendedTasks = Omit<ExistingTables["tasks"], "Row" | "Insert" | "Update"> & {
+  Row: ExistingTables["tasks"]["Row"] & TasksExtras;
+  Insert: ExistingTables["tasks"]["Insert"] & Partial<TasksExtras>;
+  Update: ExistingTables["tasks"]["Update"] & Partial<TasksExtras>;
+};
 
-type ServicePlansTable = TableShape<
-  ServicePlansRow,
-  Omit<ServicePlansRow, "id" | "created_at" | "updated_at" | "company_id"> & {
-    id?: string;
-    company_id?: string;
-    created_at?: string;
-    updated_at?: string;
-    is_active?: boolean;
-    last_generated_at?: string | null;
-    priority?: string;
-    service_type?: string;
-    object_id?: string | null;
-    product_id?: string | null;
-    coordinator_id?: string | null;
-    assignee_id?: string | null;
-    estimated_cost?: number | null;
-    notes?: string | null;
-    created_by?: string | null;
-  },
-  Partial<ServicePlansRow>
->;
+// Relationships у новых таблиц — минимальный набор для клиентских джойнов
+// (`clients(full_name)`, `objects(name)` и т.п.).
+type ServicePlansTable = {
+  Row: ServicePlansRow;
+  Insert: Partial<ServicePlansRow> & {
+    client_id: string;
+    name: string;
+    issue_template: string;
+    interval_days: number;
+    next_visit_at: string;
+  };
+  Update: Partial<ServicePlansRow>;
+  Relationships: [
+    {
+      foreignKeyName: "service_plans_client_id_fkey";
+      columns: ["client_id"];
+      isOneToOne: false;
+      referencedRelation: "clients";
+      referencedColumns: ["id"];
+    },
+    {
+      foreignKeyName: "service_plans_object_id_fkey";
+      columns: ["object_id"];
+      isOneToOne: false;
+      referencedRelation: "objects";
+      referencedColumns: ["id"];
+    },
+    {
+      foreignKeyName: "service_plans_product_id_fkey";
+      columns: ["product_id"];
+      isOneToOne: false;
+      referencedRelation: "products";
+      referencedColumns: ["id"];
+    },
+  ];
+};
 
-type ServiceEventsTable = TableShape<
-  ServiceEventsRow,
-  Omit<ServiceEventsRow, "id" | "occurred_at" | "company_id" | "metadata"> & {
-    id?: string;
-    company_id?: string;
-    occurred_at?: string;
-    metadata?: Record<string, unknown>;
-    from_status?: string | null;
-    to_status?: string | null;
-    actor_id?: string | null;
-    notes?: string | null;
-  },
-  Partial<ServiceEventsRow>
->;
+type ServiceEventsTable = {
+  Row: ServiceEventsRow;
+  Insert: Partial<ServiceEventsRow> & {
+    service_request_id: string;
+    event_type: string;
+  };
+  Update: Partial<ServiceEventsRow>;
+  Relationships: [
+    {
+      foreignKeyName: "service_events_service_request_id_fkey";
+      columns: ["service_request_id"];
+      isOneToOne: false;
+      referencedRelation: "service_requests";
+      referencedColumns: ["id"];
+    },
+  ];
+};
 
 type ServiceAugment = {
   service_plans: ServicePlansTable;
@@ -145,8 +152,6 @@ type ServiceAugment = {
   tasks: ExtendedTasks;
 };
 
-// Полный список таблиц: существующие (с ослабленным company_id в Insert) +
-// расширения service_plans/service_events + расширенные service_requests/tasks.
 type TenantTables = {
   [T in keyof ExistingTables]: T extends keyof ServiceAugment
     ? Omit<ServiceAugment[T], "Insert"> & {
