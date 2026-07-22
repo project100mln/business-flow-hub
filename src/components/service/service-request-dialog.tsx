@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Search, UserPlus, AlertTriangle, Check } from "lucide-react";
 import { toast } from "sonner";
 import { PRIORITY, SERVICE_TYPE, normalizePhone, type ServiceRequestWithRefs } from "@/lib/service";
+import { serviceKeys, invalidateServiceRequest, invalidateServicePlans } from "@/lib/service-queries";
 
 type Editing = ServiceRequestWithRefs | null;
 
