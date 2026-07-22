@@ -297,7 +297,7 @@ export function ServiceRequestDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl w-[calc(100vw-1rem)] sm:w-full max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Редактировать заявку" : "Новая сервисная заявка"}</DialogTitle>
         </DialogHeader>
@@ -423,7 +423,7 @@ export function ServiceRequestDialog({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Объект (B2B)</Label>
               <Select value={objectId} onValueChange={setObjectId}>
@@ -461,7 +461,7 @@ export function ServiceRequestDialog({
             <Textarea value={issue} onChange={(e) => setIssue(e.target.value)} />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Тип сервиса</Label>
               <Select value={serviceType} onValueChange={setServiceType} disabled={periodic}>
@@ -534,7 +534,7 @@ export function ServiceRequestDialog({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Оператор-координатор</Label>
               <Select value={coordinatorId} onValueChange={setCoordinatorId}>
@@ -584,7 +584,7 @@ export function ServiceRequestDialog({
                 <Switch checked={periodic} onCheckedChange={setPeriodic} />
               </div>
               {periodic && (
-                <div className="grid grid-cols-2 gap-3 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                   <div>
                     <Label>Название плана</Label>
                     <Input
