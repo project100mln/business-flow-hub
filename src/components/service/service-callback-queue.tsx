@@ -154,7 +154,7 @@ export function ServiceCallbackQueue({
                       Заявка
                     </Button>
                   )}
-                  {t.status !== "done" && (
+                  {t.status !== "done" && caps.canManageCallbacks && (
                     <Button size="sm" variant="outline" onClick={() => done.mutate(t.id)}>
                       Готово
                     </Button>
