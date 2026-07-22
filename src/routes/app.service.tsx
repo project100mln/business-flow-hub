@@ -422,7 +422,12 @@ function Service() {
 
         {/* Планы */}
         <TabsContent value="plans" className="mt-4">
-          <ServicePlans staff={staff} isAdmin={isAdmin} />
+          <ServicePlans
+            staff={staff}
+            isAdmin={isAdmin}
+            canManage={isAdmin || hasRole("manager") || hasRole("coordinator")}
+            currentUserId={user?.id ?? null}
+          />
         </TabsContent>
       </Tabs>
 
