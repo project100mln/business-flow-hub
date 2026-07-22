@@ -20,6 +20,11 @@ export type ServiceCapabilities = {
   canDeletePlan: boolean;
   canDeleteRequest: boolean;
   canViewServiceReports: boolean;
+  // Право менять финансовые поля заявки (стоимость и т.п.). У оператора его
+  // нет: он может редактировать заявку, но не изменять цену. Ограничение
+  // одновременно скрывает поле и вырезает его из payload мутации. Реальная
+  // защита — RLS/триггер БД (см. серверный гэп в отчёте).
+  canEditFinancialFields: boolean;
   // Исполнитель (installer): показывать в UI только заявки, назначенные
   // ему. Это ТОЛЬКО клиентское сужение — RLS должна гарантировать это на
   // сервере отдельно (см. финальный отчёт про серверный гэп).
@@ -52,6 +57,10 @@ export function getServiceCapabilities(roles: AppRole[]): ServiceCapabilities {
   const canDeletePlan = isAdmin; // manager/coordinator — без удаления (уровень RLS).
   const canDeleteRequest = isAdmin;
   const canViewServiceReports = isAdmin || isManager;
+  // Оператор редактирует заявку, но не финансы. Финансовые поля меняют
+  // только admin/manager/coordinator (координатор смыкает продажу
+  // с сервисом и часто фиксирует итоговую сумму).
+  const canEditFinancialFields = isAdmin || isManager || isCoordinator;
 
   // Исполнитель без других ролей — сужаем список в UI.
   const onlyAssignedInUI = isInstaller && !isAdmin && !isManager && !isCoordinator && !isOperator;
@@ -75,6 +84,7 @@ export function getServiceCapabilities(roles: AppRole[]): ServiceCapabilities {
     canDeletePlan,
     canDeleteRequest,
     canViewServiceReports,
+    canEditFinancialFields,
     onlyAssignedInUI,
     tabs,
   };

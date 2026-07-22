@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Search, UserPlus, AlertTriangle, Check } from "lucide-react";
 import { toast } from "sonner";
 import { PRIORITY, SERVICE_TYPE, normalizePhone, type ServiceRequestWithRefs } from "@/lib/service";
+import type { ServiceCapabilities } from "@/lib/service-permissions";
 import {
   serviceKeys,
   invalidateServiceRequest,
@@ -46,11 +47,13 @@ export function ServiceRequestDialog({
   onOpenChange,
   editing,
   currentUserId,
+  caps,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   editing: Editing;
   currentUserId: string | null;
+  caps: ServiceCapabilities;
 }) {
   const qc = useQueryClient();
   const isEdit = !!editing?.id;
@@ -238,7 +241,7 @@ export function ServiceRequestDialog({
         return;
       }
 
-      const payload = {
+      const basePayload = {
         client_id: clientId || null,
         object_id: objectId || null,
         product_id: productId || null,
@@ -248,9 +251,17 @@ export function ServiceRequestDialog({
         scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : null,
         coordinator_id: coordinatorId || null,
         assignee_id: assigneeId || null,
-        cost: cost ? Number(cost) : 0,
         notes: notes || null,
       };
+      // Финансовые поля меняем ТОЛЬКО если у роли есть право. При
+      // редактировании без права поле `cost` в payload не попадает,
+      // при создании оператор получает 0 по умолчанию. Реальная
+      // защита должна дублироваться на уровне RLS/триггера БД.
+      const payload = caps.canEditFinancialFields
+        ? { ...basePayload, cost: cost ? Number(cost) : 0 }
+        : isEdit
+          ? basePayload
+          : { ...basePayload, cost: 0 };
       if (isEdit) {
         // статус здесь НЕ меняем — переходы идут через карточку заявки (FSM)
         const { error } = await supabase
@@ -286,7 +297,7 @@ export function ServiceRequestDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl w-[calc(100vw-1rem)] sm:w-full max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Редактировать заявку" : "Новая сервисная заявка"}</DialogTitle>
         </DialogHeader>
@@ -412,7 +423,7 @@ export function ServiceRequestDialog({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Объект (B2B)</Label>
               <Select value={objectId} onValueChange={setObjectId}>
@@ -450,7 +461,7 @@ export function ServiceRequestDialog({
             <Textarea value={issue} onChange={(e) => setIssue(e.target.value)} />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Тип сервиса</Label>
               <Select value={serviceType} onValueChange={setServiceType} disabled={periodic}>
@@ -501,7 +512,7 @@ export function ServiceRequestDialog({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>
                 {periodic ? "Первый визит *" : "Дата и время"}
@@ -515,13 +526,15 @@ export function ServiceRequestDialog({
                 onChange={(e) => setScheduledAt(e.target.value)}
               />
             </div>
-            <div>
-              <Label>Стоимость, ₸</Label>
-              <Input type="number" value={cost} onChange={(e) => setCost(e.target.value)} />
-            </div>
+            {caps.canEditFinancialFields && (
+              <div>
+                <Label>Стоимость, ₸</Label>
+                <Input type="number" value={cost} onChange={(e) => setCost(e.target.value)} />
+              </div>
+            )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Оператор-координатор</Label>
               <Select value={coordinatorId} onValueChange={setCoordinatorId}>
@@ -571,7 +584,7 @@ export function ServiceRequestDialog({
                 <Switch checked={periodic} onCheckedChange={setPeriodic} />
               </div>
               {periodic && (
-                <div className="grid grid-cols-2 gap-3 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                   <div>
                     <Label>Название плана</Label>
                     <Input

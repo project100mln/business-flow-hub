@@ -621,7 +621,7 @@ function PlanDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl w-[calc(100vw-1rem)] sm:w-full max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Редактировать план" : "Новый план обслуживания"}</DialogTitle>
         </DialogHeader>
@@ -980,7 +980,7 @@ function PlanViewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl w-[calc(100vw-1rem)] sm:w-full max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <span>{plan.name}</span>
