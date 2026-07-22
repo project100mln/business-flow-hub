@@ -17,7 +17,8 @@ function ModuleDisabled() {
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-4 text-center">
       <div className="text-lg font-semibold">Модуль недоступен</div>
       <p className="max-w-sm text-sm text-muted-foreground">
-        Этот раздел отключён для вашей компании. Обратитесь к администратору, если он должен быть доступен.
+        Этот раздел отключён для вашей компании. Обратитесь к администратору, если он должен быть
+        доступен.
       </p>
       <Button asChild variant="outline" size="sm">
         <Link to="/app/dashboard">На дашборд</Link>
@@ -40,7 +41,11 @@ function AppLayout() {
   const moduleBlocked = requiredModule ? !hasModule(requiredModule) : false;
 
   if (loading || !session) {
-    return <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground text-sm">Загрузка...</div>;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground text-sm">
+        Загрузка...
+      </div>
+    );
   }
 
   return (
@@ -51,7 +56,9 @@ function AppLayout() {
           <header className="h-14 flex items-center gap-3 border-b border-border bg-surface/40 backdrop-blur px-4">
             <SidebarTrigger />
             <div className="h-5 w-px bg-border" />
-            <div className="text-sm text-muted-foreground flex-1">PURE-HOME OS · Hyla, фильтры, воздухоочистители</div>
+            <div className="text-sm text-muted-foreground flex-1">
+              PURE-HOME OS · Hyla, фильтры, воздухоочистители
+            </div>
             <NotificationsBell />
           </header>
           <main className="flex-1 overflow-auto">
