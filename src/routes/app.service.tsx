@@ -211,8 +211,7 @@ function Service() {
       if (typeof id === "string") openDetailById(id);
     };
     window.addEventListener("orbit:open-service-request", handler as EventListener);
-    return () =>
-      window.removeEventListener("orbit:open-service-request", handler as EventListener);
+    return () => window.removeEventListener("orbit:open-service-request", handler as EventListener);
     // openDetailById зависит от items → перерегистрируем при обновлении списка
   }, [items]);
 

@@ -573,7 +573,11 @@ function PlanDialog({
   };
 
   const canSave =
-    !!clientId && !!name.trim() && !!issueTemplate.trim() && !!nextVisitAt && Number(intervalDays) > 0;
+    !!clientId &&
+    !!name.trim() &&
+    !!issueTemplate.trim() &&
+    !!nextVisitAt &&
+    Number(intervalDays) > 0;
 
   const save = useMutation({
     mutationFn: async () => {
@@ -593,10 +597,7 @@ function PlanDialog({
         notes: notes.trim() || null,
       };
       if (isEdit && editing) {
-        const { error } = await supabase
-          .from("service_plans")
-          .update(payload)
-          .eq("id", editing.id);
+        const { error } = await supabase.from("service_plans").update(payload).eq("id", editing.id);
         if (error) throw error;
       } else {
         const { error } = await supabase.from("service_plans").insert({
@@ -624,7 +625,9 @@ function PlanDialog({
         <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
           {/* Client */}
           <div className="rounded-xl border border-border p-3 space-y-2">
-            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Клиент *</Label>
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+              Клиент *
+            </Label>
             {clientId ? (
               <div className="flex items-center justify-between gap-2 text-sm">
                 <span>{clientLabel || "Выбран"}</span>
@@ -920,7 +923,8 @@ function PlanViewDialog({
   const createRequest = useMutation({
     mutationFn: async () => {
       if (!plan) throw new Error("Нет плана");
-      if (!plan.is_active) throw new Error("План приостановлен — возобновите его перед созданием заявки");
+      if (!plan.is_active)
+        throw new Error("План приостановлен — возобновите его перед созданием заявки");
       if (openRequests.length > 0)
         throw new Error("По плану уже есть активная заявка — откройте её вместо создания дубля");
       const { error } = await supabase.from("service_requests").insert({
@@ -998,10 +1002,7 @@ function PlanViewDialog({
             <Info label="Координатор" value={staffName(plan.coordinator_id)} />
             <Info label="Исполнитель" value={staffName(plan.assignee_id)} />
             <Info label="Приоритет" value={PRIORITY[plan.priority] || plan.priority} />
-            <Info
-              label="Последняя генерация"
-              value={fmtDateTime(plan.last_generated_at)}
-            />
+            <Info label="Последняя генерация" value={fmtDateTime(plan.last_generated_at)} />
           </div>
 
           {plan.issue_template && (
