@@ -402,48 +402,50 @@ export function ServiceRequestDetails({
 
           {/* Перезвоны */}
           <TabsContent value="callbacks" className="space-y-3">
-            <div className="rounded-xl border border-border p-3 space-y-2">
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                Новый перезвон
-              </Label>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label>Когда *</Label>
-                  <Input
-                    type="datetime-local"
-                    value={cbDue}
-                    onChange={(e) => setCbDue(e.target.value)}
-                  />
+            {caps.canManageCallbacks && (
+              <div className="rounded-xl border border-border p-3 space-y-2">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Новый перезвон
+                </Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label>Когда *</Label>
+                    <Input
+                      type="datetime-local"
+                      value={cbDue}
+                      onChange={(e) => setCbDue(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label>Ответственный *</Label>
+                    <Select value={cbAssignee} onValueChange={setCbAssignee}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="—" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {staff.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.full_name || "Без имени"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div>
-                  <Label>Ответственный *</Label>
-                  <Select value={cbAssignee} onValueChange={setCbAssignee}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="—" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {staff.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.full_name || "Без имени"}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Textarea
+                  placeholder="Причина / комментарий"
+                  value={cbNote}
+                  onChange={(e) => setCbNote(e.target.value)}
+                />
+                <Button
+                  size="sm"
+                  onClick={() => createCallback.mutate()}
+                  disabled={createCallback.isPending}
+                >
+                  Запланировать
+                </Button>
               </div>
-              <Textarea
-                placeholder="Причина / комментарий"
-                value={cbNote}
-                onChange={(e) => setCbNote(e.target.value)}
-              />
-              <Button
-                size="sm"
-                onClick={() => createCallback.mutate()}
-                disabled={createCallback.isPending}
-              >
-                Запланировать
-              </Button>
-            </div>
+            )}
 
             {callbacks
               .filter((t) => t.task_type === "service_callback")
@@ -466,7 +468,7 @@ export function ServiceRequestDetails({
                       {t.description}
                     </p>
                   )}
-                  {t.status !== "done" && (
+                  {t.status !== "done" && caps.canManageCallbacks && (
                     <div className="flex gap-2 pt-1">
                       <NoAnswer
                         disabled={rescheduleCallback.isPending}
