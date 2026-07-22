@@ -7,14 +7,18 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { fmtDateTime, isOverdue, isToday, type StaffOption } from "@/lib/service";
 import { serviceKeys } from "@/lib/service-queries";
+import type { ServiceCapabilities } from "@/lib/service-permissions";
+import { DENIED_MESSAGE } from "@/lib/service-permissions";
 
 // Очереди перезвонов/сервисных задач: Просроченные, Сегодня, Предстоящие, Без ответа, Завершённые.
 export function ServiceCallbackQueue({
   staff,
   onOpenRequest,
+  caps,
 }: {
   staff: StaffOption[];
   onOpenRequest: (id: string) => void;
+  caps: ServiceCapabilities;
 }) {
   const qc = useQueryClient();
   const staffName = (uid?: string | null) => staff.find((s) => s.id === uid)?.full_name || "—";
@@ -39,6 +43,7 @@ export function ServiceCallbackQueue({
 
   const done = useMutation({
     mutationFn: async (id: string) => {
+      if (!caps.canManageCallbacks) throw new Error(DENIED_MESSAGE);
       const { error } = await supabase.from("tasks").update({ status: "done" }).eq("id", id);
       if (error) throw error;
     },
