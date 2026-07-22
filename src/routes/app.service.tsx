@@ -439,6 +439,10 @@ function Service() {
         onOpenChange={setDetailOpen}
         staff={staff}
         currentUserId={user?.id ?? null}
+        onEdit={(r) => {
+          setEditing(r);
+          setDialogOpen(true);
+        }}
       />
     </div>
   );
