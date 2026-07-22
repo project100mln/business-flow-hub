@@ -1,5 +1,5 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
-import { LayoutDashboard, Users, Building2, Briefcase, ListChecks, Wrench, LifeBuoy, CreditCard, Boxes, Wallet, LogOut, UserCog, Crown, Headphones, ClipboardList, Sparkles } from "lucide-react";
+import { LayoutDashboard, Users, Building2, Briefcase, ListChecks, Wrench, LifeBuoy, CreditCard, Boxes, Wallet, LogOut, UserCog, Crown, Headphones, Sparkles } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, useSidebar,
@@ -20,8 +20,10 @@ const salesItems = [
   { title: "Задачи", url: "/app/tasks", icon: ListChecks, module: "tasks" },
 ];
 
+// Единый вход в модуль «Сервис» (доска, заявки, перезвоны, планы).
+// Отдельный пункт «Заявки (Координатор)» удалён — координатор работает
+// внутри модуля «Сервис» через существующие вкладки.
 const serviceItems = [
-  { title: "Заявки (Координатор)", url: "/app/coordinator", icon: ClipboardList, module: "service" },
   { title: "Установки", url: "/app/installations", icon: Wrench, module: "installations" },
   { title: "Сервис", url: "/app/service", icon: LifeBuoy, module: "service" },
   { title: "Рассрочки", url: "/app/installments", icon: CreditCard, module: "installments" },
