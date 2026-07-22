@@ -272,8 +272,8 @@ export function ServiceRequestDialog({
         isEdit ? "Заявка обновлена" : periodic ? "План обслуживания создан" : "Заявка создана",
       );
       onOpenChange(false);
-      qc.invalidateQueries({ queryKey: ["service"] });
-      qc.invalidateQueries({ queryKey: ["service-plans"] });
+      invalidateServiceRequest(qc, editing?.id);
+      if (periodic) invalidateServicePlans(qc);
     },
     onError: (e: Error) => toast.error(e.message),
   });
