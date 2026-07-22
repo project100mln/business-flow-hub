@@ -454,12 +454,14 @@ export function ServiceRequestDetails({
                   {t.status !== "done" && (
                     <div className="flex gap-2 pt-1">
                       <NoAnswer
+                        disabled={rescheduleCallback.isPending}
                         onReschedule={(when) => rescheduleCallback.mutate({ task: t, when })}
                       />
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => closeCallback.mutate(t.id)}
+                        disabled={closeCallback.isPending}
                       >
                         Дозвонились
                       </Button>
