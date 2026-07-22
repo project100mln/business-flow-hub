@@ -55,6 +55,8 @@ import {
   invalidateServicePlans,
   invalidateServiceRequest,
 } from "@/lib/service-queries";
+import type { ServiceCapabilities } from "@/lib/service-permissions";
+import { DENIED_MESSAGE } from "@/lib/service-permissions";
 
 type PlanRow = ServicePlanRow & {
   clients?: { full_name: string | null; phone?: string | null } | null;
@@ -81,15 +83,15 @@ const toLocalInput = (v?: string | null): string => {
 
 export function ServicePlans({
   staff,
-  isAdmin,
-  canManage,
+  caps,
   currentUserId,
 }: {
   staff: StaffOption[];
-  isAdmin: boolean;
-  canManage: boolean;
+  caps: ServiceCapabilities;
   currentUserId: string | null;
 }) {
+  const canManage = caps.canManagePlans;
+  const canDelete = caps.canDeletePlan;
   const qc = useQueryClient();
   const staffName = (uid?: string | null) => staff.find((s) => s.id === uid)?.full_name || "—";
 
@@ -120,6 +122,7 @@ export function ServicePlans({
 
   const toggle = useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
+      if (!canManage) throw new Error(DENIED_MESSAGE);
       const { error } = await supabase.from("service_plans").update({ is_active }).eq("id", id);
       if (error) throw error;
     },
@@ -358,7 +361,7 @@ export function ServicePlans({
         onOpenChange={(v) => !v && setViewing(null)}
         staff={staff}
         canManage={canManage}
-        isAdmin={isAdmin}
+        canDelete={canDelete}
         currentUserId={currentUserId}
         onEdit={(p) => {
           setViewing(null);
@@ -880,7 +883,7 @@ function PlanViewDialog({
   onOpenChange,
   staff,
   canManage,
-  isAdmin,
+  canDelete,
   currentUserId,
   onEdit,
 }: {
@@ -889,7 +892,7 @@ function PlanViewDialog({
   onOpenChange: (v: boolean) => void;
   staff: StaffOption[];
   canManage: boolean;
-  isAdmin: boolean;
+  canDelete: boolean;
   currentUserId: string | null;
   onEdit: (p: PlanRow) => void;
 }) {
@@ -922,6 +925,7 @@ function PlanViewDialog({
 
   const createRequest = useMutation({
     mutationFn: async () => {
+      if (!canManage) throw new Error(DENIED_MESSAGE);
       if (!plan) throw new Error("Нет плана");
       if (!plan.is_active)
         throw new Error("План приостановлен — возобновите его перед созданием заявки");
@@ -956,6 +960,7 @@ function PlanViewDialog({
 
   const del = useMutation({
     mutationFn: async () => {
+      if (!canDelete) throw new Error(DENIED_MESSAGE);
       if (!plan) return;
       const { error } = await supabase.from("service_plans").delete().eq("id", plan.id);
       if (error) throw error;
@@ -1105,7 +1110,7 @@ function PlanViewDialog({
                   </>
                 )}
               </Button>
-              {isAdmin && (
+              {canDelete && (
                 <Button
                   variant="ghost"
                   className="text-destructive"

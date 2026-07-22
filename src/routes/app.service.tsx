@@ -38,6 +38,7 @@ import {
   type StaffOption,
 } from "@/lib/service";
 import { serviceKeys, invalidateServiceRequest } from "@/lib/service-queries";
+import { getServiceCapabilities, DENIED_MESSAGE, type ServiceTab } from "@/lib/service-permissions";
 import { ServiceRequestDialog } from "@/components/service/service-request-dialog";
 import { ServiceRequestDetails } from "@/components/service/service-request-details";
 import { ServiceBoard } from "@/components/service/service-board";
@@ -48,8 +49,8 @@ export const Route = createFileRoute("/app/service")({ component: Service });
 
 function Service() {
   const qc = useQueryClient();
-  const { hasRole, user } = useAuth();
-  const isAdmin = hasRole("admin");
+  const { roles, user } = useAuth();
+  const caps = useMemo(() => getServiceCapabilities(roles), [roles]);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ServiceRequestWithRefs | null>(null);
@@ -66,6 +67,7 @@ function Service() {
   const [fDate, setFDate] = useState("");
   const [onlyOverdue, setOnlyOverdue] = useState(false);
   const [onlyToday, setOnlyToday] = useState(false);
+  const [activeTab, setActiveTab] = useState<ServiceTab>("board");
 
   const {
     data: items = [],
@@ -114,6 +116,9 @@ function Service() {
 
   const del = useMutation({
     mutationFn: async (id: string) => {
+      // Прикладная проверка перед мутацией — не только скрытая кнопка.
+      // Реальная защита — RLS (см. серверный гэп в отчёте).
+      if (!caps.canDeleteRequest) throw new Error(DENIED_MESSAGE);
       const { error } = await supabase.from("service_requests").delete().eq("id", id);
       if (error) throw error;
     },
@@ -151,7 +156,11 @@ function Service() {
 
   // ---- filtered list ----
   const filtered = useMemo(() => {
-    let list = items;
+    // Клиентское сужение для исполнителя: только его заявки. Это НЕ
+    // безопасность — RLS должна фильтровать на сервере. Если БД вернула
+    // чужие строки, мы их скроем в UI, но не заявляем, что это защита.
+    let list =
+      caps.onlyAssignedInUI && user?.id ? items.filter((i) => i.assignee_id === user.id) : items;
     if (search.trim()) {
       const s = search.toLowerCase();
       list = list.filter(
@@ -185,6 +194,8 @@ function Service() {
     fDate,
     onlyOverdue,
     onlyToday,
+    caps.onlyAssignedInUI,
+    user?.id,
   ]);
 
   const openDetail = (r: ServiceRequestWithRefs) => {
@@ -230,16 +241,18 @@ function Service() {
             Диспетчеризация заявок, перезвоны и обслуживание.
           </p>
         </div>
-        <Button
-          className="bg-gradient-primary"
-          onClick={() => {
-            setEditing(null);
-            setDialogOpen(true);
-          }}
-        >
-          <Plus className="size-4 mr-1" />
-          Новая заявка
-        </Button>
+        {caps.canCreateRequest && (
+          <Button
+            className="bg-gradient-primary"
+            onClick={() => {
+              setEditing(null);
+              setDialogOpen(true);
+            }}
+          >
+            <Plus className="size-4 mr-1" />
+            Новая заявка
+          </Button>
+        )}
       </div>
 
       {/* KPIs */}
@@ -259,12 +272,19 @@ function Service() {
         <Kpi label="Обратная связь" value={kpi.feedbackToday} />
       </div>
 
-      <Tabs defaultValue="board">
+      <Tabs
+        value={caps.tabs.includes(activeTab) ? activeTab : (caps.tabs[0] ?? "board")}
+        onValueChange={(v) => setActiveTab(v as ServiceTab)}
+      >
         <TabsList>
-          <TabsTrigger value="board">Доска</TabsTrigger>
-          <TabsTrigger value="all">Все заявки</TabsTrigger>
-          <TabsTrigger value="callbacks">Перезвоны</TabsTrigger>
-          <TabsTrigger value="plans">Планы обслуживания</TabsTrigger>
+          {caps.tabs.includes("board") && <TabsTrigger value="board">Доска</TabsTrigger>}
+          {caps.tabs.includes("all") && <TabsTrigger value="all">Все заявки</TabsTrigger>}
+          {caps.tabs.includes("callbacks") && (
+            <TabsTrigger value="callbacks">Перезвоны</TabsTrigger>
+          )}
+          {caps.tabs.includes("plans") && (
+            <TabsTrigger value="plans">Планы обслуживания</TabsTrigger>
+          )}
         </TabsList>
 
         {/* Доска */}
@@ -392,7 +412,7 @@ function Service() {
                       <Button size="icon" variant="ghost" onClick={() => openDetail(s)}>
                         <Eye className="size-4" />
                       </Button>
-                      {isAdmin && (
+                      {caps.canDeleteRequest && (
                         <Button
                           size="icon"
                           variant="ghost"
@@ -427,19 +447,18 @@ function Service() {
         </TabsContent>
 
         {/* Перезвоны */}
-        <TabsContent value="callbacks" className="mt-4">
-          <ServiceCallbackQueue staff={staff} onOpenRequest={openDetailById} />
-        </TabsContent>
+        {caps.tabs.includes("callbacks") && (
+          <TabsContent value="callbacks" className="mt-4">
+            <ServiceCallbackQueue staff={staff} onOpenRequest={openDetailById} caps={caps} />
+          </TabsContent>
+        )}
 
         {/* Планы */}
-        <TabsContent value="plans" className="mt-4">
-          <ServicePlans
-            staff={staff}
-            isAdmin={isAdmin}
-            canManage={isAdmin || hasRole("manager") || hasRole("coordinator")}
-            currentUserId={user?.id ?? null}
-          />
-        </TabsContent>
+        {caps.tabs.includes("plans") && (
+          <TabsContent value="plans" className="mt-4">
+            <ServicePlans staff={staff} caps={caps} currentUserId={user?.id ?? null} />
+          </TabsContent>
+        )}
       </Tabs>
 
       <ServiceRequestDialog
@@ -454,6 +473,7 @@ function Service() {
         onOpenChange={setDetailOpen}
         staff={staff}
         currentUserId={user?.id ?? null}
+        caps={caps}
         onEdit={(r) => {
           setEditing(r);
           setDialogOpen(true);

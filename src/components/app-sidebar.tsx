@@ -1,8 +1,33 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
-import { LayoutDashboard, Users, Building2, Briefcase, ListChecks, Wrench, LifeBuoy, CreditCard, Boxes, Wallet, LogOut, UserCog, Crown, Headphones, ClipboardList, Sparkles } from "lucide-react";
 import {
-  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
-  SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, useSidebar,
+  LayoutDashboard,
+  Users,
+  Building2,
+  Briefcase,
+  ListChecks,
+  Wrench,
+  LifeBuoy,
+  CreditCard,
+  Boxes,
+  Wallet,
+  LogOut,
+  UserCog,
+  Crown,
+  Headphones,
+  Sparkles,
+} from "lucide-react";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarHeader,
+  SidebarFooter,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,8 +45,10 @@ const salesItems = [
   { title: "Задачи", url: "/app/tasks", icon: ListChecks, module: "tasks" },
 ];
 
+// Единый вход в модуль «Сервис» (доска, заявки, перезвоны, планы).
+// Отдельный пункт «Заявки (Координатор)» удалён — координатор работает
+// внутри модуля «Сервис» через существующие вкладки.
 const serviceItems = [
-  { title: "Заявки (Координатор)", url: "/app/coordinator", icon: ClipboardList, module: "service" },
   { title: "Установки", url: "/app/installations", icon: Wrench, module: "installations" },
   { title: "Сервис", url: "/app/service", icon: LifeBuoy, module: "service" },
   { title: "Рассрочки", url: "/app/installments", icon: CreditCard, module: "installments" },
@@ -54,7 +81,6 @@ export function AppSidebar() {
     finance: "Финансист",
     coordinator: "Координатор",
   };
-  
 
   return (
     <Sidebar collapsible="icon">
@@ -70,16 +96,18 @@ export function AppSidebar() {
           <SidebarGroupLabel>Продажи</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {salesItems.filter((i) => !i.module || hasModule(i.module)).map((item) => (
-                <SidebarMenuItem key={item.url}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <Link to={item.url} className="flex items-center gap-2">
-                      <item.icon className="size-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {salesItems
+                .filter((i) => !i.module || hasModule(i.module))
+                .map((item) => (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <Link to={item.url} className="flex items-center gap-2">
+                        <item.icon className="size-4" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -88,16 +116,18 @@ export function AppSidebar() {
           <SidebarGroupLabel>Сервис</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {serviceItems.filter((i) => !i.module || hasModule(i.module)).map((item) => (
-                <SidebarMenuItem key={item.url}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <Link to={item.url} className="flex items-center gap-2">
-                      <item.icon className="size-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {serviceItems
+                .filter((i) => !i.module || hasModule(i.module))
+                .map((item) => (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <Link to={item.url} className="flex items-center gap-2">
+                        <item.icon className="size-4" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -154,7 +184,8 @@ export function AppSidebar() {
           </div>
         )}
         <Button variant="ghost" size="sm" onClick={signOut} className="w-full justify-start">
-          <LogOut className="size-4" />{!collapsed && <span className="ml-2">Выйти</span>}
+          <LogOut className="size-4" />
+          {!collapsed && <span className="ml-2">Выйти</span>}
         </Button>
       </SidebarFooter>
     </Sidebar>

@@ -32,6 +32,8 @@ import {
   type StaffOption,
 } from "@/lib/service";
 import { serviceKeys, invalidateServiceRequest } from "@/lib/service-queries";
+import type { ServiceCapabilities } from "@/lib/service-permissions";
+import { DENIED_MESSAGE } from "@/lib/service-permissions";
 
 export function ServiceRequestDetails({
   request,
@@ -39,6 +41,7 @@ export function ServiceRequestDetails({
   onOpenChange,
   staff,
   currentUserId,
+  caps,
   onEdit,
 }: {
   request: ServiceRequestWithRefs | null;
@@ -46,6 +49,7 @@ export function ServiceRequestDetails({
   onOpenChange: (v: boolean) => void;
   staff: StaffOption[];
   currentUserId: string | null;
+  caps: ServiceCapabilities;
   onEdit?: (r: ServiceRequestWithRefs) => void;
 }) {
   const qc = useQueryClient();
@@ -65,6 +69,7 @@ export function ServiceRequestDetails({
 
   const changeStatus = useMutation({
     mutationFn: async () => {
+      if (!caps.canChangeStatus) throw new Error(DENIED_MESSAGE);
       if (!id) throw new Error("Заявка не выбрана");
       if (!target) throw new Error("Выберите новый статус");
       // Клиентская проверка FSM — сервер повторно валидирует триггером.
@@ -162,6 +167,7 @@ export function ServiceRequestDetails({
   const [cbNote, setCbNote] = useState("");
   const createCallback = useMutation({
     mutationFn: async () => {
+      if (!caps.canManageCallbacks) throw new Error(DENIED_MESSAGE);
       if (!request) throw new Error("Заявка не выбрана");
       if (!cbDue) throw new Error("Укажите дату перезвона");
       if (!cbAssignee) throw new Error("Назначьте ответственного");
@@ -189,6 +195,7 @@ export function ServiceRequestDetails({
 
   const rescheduleCallback = useMutation({
     mutationFn: async ({ task, when }: { task: ServiceTaskRow; when: string }) => {
+      if (!caps.canManageCallbacks) throw new Error(DENIED_MESSAGE);
       const stamp = new Date().toLocaleString("ru-RU");
       const appended = `${task.description ? task.description + "\n" : ""}[${stamp}] Не дозвонились, перенос на ${new Date(when).toLocaleString("ru-RU")}`;
       const { error } = await supabase
@@ -206,6 +213,7 @@ export function ServiceRequestDetails({
 
   const closeCallback = useMutation({
     mutationFn: async (taskId: string) => {
+      if (!caps.canManageCallbacks) throw new Error(DENIED_MESSAGE);
       const { error } = await supabase.from("tasks").update({ status: "done" }).eq("id", taskId);
       if (error) throw error;
     },
@@ -229,7 +237,7 @@ export function ServiceRequestDetails({
                 {SERVICE_STATUS[request.status] || request.status}
               </Badge>
             </SheetTitle>
-            {onEdit && (
+            {onEdit && caps.canEditRequest && (
               <Button
                 size="sm"
                 variant="outline"
@@ -243,7 +251,7 @@ export function ServiceRequestDetails({
         </SheetHeader>
 
         {/* ---- Смена статуса ---- */}
-        {allowed.length > 0 && (
+        {allowed.length > 0 && caps.canChangeStatus && (
           <div className="mt-4 rounded-xl border border-border p-3 space-y-3">
             <Label className="text-xs uppercase tracking-wide text-muted-foreground">
               Сменить статус
@@ -394,48 +402,50 @@ export function ServiceRequestDetails({
 
           {/* Перезвоны */}
           <TabsContent value="callbacks" className="space-y-3">
-            <div className="rounded-xl border border-border p-3 space-y-2">
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                Новый перезвон
-              </Label>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label>Когда *</Label>
-                  <Input
-                    type="datetime-local"
-                    value={cbDue}
-                    onChange={(e) => setCbDue(e.target.value)}
-                  />
+            {caps.canManageCallbacks && (
+              <div className="rounded-xl border border-border p-3 space-y-2">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Новый перезвон
+                </Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label>Когда *</Label>
+                    <Input
+                      type="datetime-local"
+                      value={cbDue}
+                      onChange={(e) => setCbDue(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label>Ответственный *</Label>
+                    <Select value={cbAssignee} onValueChange={setCbAssignee}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="—" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {staff.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.full_name || "Без имени"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div>
-                  <Label>Ответственный *</Label>
-                  <Select value={cbAssignee} onValueChange={setCbAssignee}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="—" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {staff.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.full_name || "Без имени"}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Textarea
+                  placeholder="Причина / комментарий"
+                  value={cbNote}
+                  onChange={(e) => setCbNote(e.target.value)}
+                />
+                <Button
+                  size="sm"
+                  onClick={() => createCallback.mutate()}
+                  disabled={createCallback.isPending}
+                >
+                  Запланировать
+                </Button>
               </div>
-              <Textarea
-                placeholder="Причина / комментарий"
-                value={cbNote}
-                onChange={(e) => setCbNote(e.target.value)}
-              />
-              <Button
-                size="sm"
-                onClick={() => createCallback.mutate()}
-                disabled={createCallback.isPending}
-              >
-                Запланировать
-              </Button>
-            </div>
+            )}
 
             {callbacks
               .filter((t) => t.task_type === "service_callback")
@@ -458,7 +468,7 @@ export function ServiceRequestDetails({
                       {t.description}
                     </p>
                   )}
-                  {t.status !== "done" && (
+                  {t.status !== "done" && caps.canManageCallbacks && (
                     <div className="flex gap-2 pt-1">
                       <NoAnswer
                         disabled={rescheduleCallback.isPending}
