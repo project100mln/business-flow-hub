@@ -48,15 +48,13 @@ export function getServiceCapabilities(roles: AppRole[]): ServiceCapabilities {
   const canEditRequest = isAdmin || isManager || isCoordinator || isOperator;
   const canAssignRequest = isAdmin || isManager || isCoordinator;
   const canManageCallbacks = isAdmin || isManager || isCoordinator || isOperator;
-  const canChangeStatus =
-    isAdmin || isManager || isCoordinator || isOperator || isInstaller;
+  const canChangeStatus = isAdmin || isManager || isCoordinator || isOperator || isInstaller;
   const canDeletePlan = isAdmin; // manager/coordinator — без удаления (уровень RLS).
   const canDeleteRequest = isAdmin;
   const canViewServiceReports = isAdmin || isManager;
 
   // Исполнитель без других ролей — сужаем список в UI.
-  const onlyAssignedInUI =
-    isInstaller && !isAdmin && !isManager && !isCoordinator && !isOperator;
+  const onlyAssignedInUI = isInstaller && !isAdmin && !isManager && !isCoordinator && !isOperator;
 
   const tabs: ServiceTab[] = [];
   if (isStaff) {

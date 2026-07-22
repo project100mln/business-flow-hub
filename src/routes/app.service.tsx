@@ -38,11 +38,7 @@ import {
   type StaffOption,
 } from "@/lib/service";
 import { serviceKeys, invalidateServiceRequest } from "@/lib/service-queries";
-import {
-  getServiceCapabilities,
-  DENIED_MESSAGE,
-  type ServiceTab,
-} from "@/lib/service-permissions";
+import { getServiceCapabilities, DENIED_MESSAGE, type ServiceTab } from "@/lib/service-permissions";
 import { ServiceRequestDialog } from "@/components/service/service-request-dialog";
 import { ServiceRequestDetails } from "@/components/service/service-request-details";
 import { ServiceBoard } from "@/components/service/service-board";
@@ -163,9 +159,8 @@ function Service() {
     // Клиентское сужение для исполнителя: только его заявки. Это НЕ
     // безопасность — RLS должна фильтровать на сервере. Если БД вернула
     // чужие строки, мы их скроем в UI, но не заявляем, что это защита.
-    let list = caps.onlyAssignedInUI && user?.id
-      ? items.filter((i) => i.assignee_id === user.id)
-      : items;
+    let list =
+      caps.onlyAssignedInUI && user?.id ? items.filter((i) => i.assignee_id === user.id) : items;
     if (search.trim()) {
       const s = search.toLowerCase();
       list = list.filter(
@@ -278,7 +273,7 @@ function Service() {
       </div>
 
       <Tabs
-        value={caps.tabs.includes(activeTab) ? activeTab : caps.tabs[0] ?? "board"}
+        value={caps.tabs.includes(activeTab) ? activeTab : (caps.tabs[0] ?? "board")}
         onValueChange={(v) => setActiveTab(v as ServiceTab)}
       >
         <TabsList>
@@ -454,22 +449,14 @@ function Service() {
         {/* Перезвоны */}
         {caps.tabs.includes("callbacks") && (
           <TabsContent value="callbacks" className="mt-4">
-            <ServiceCallbackQueue
-              staff={staff}
-              onOpenRequest={openDetailById}
-              caps={caps}
-            />
+            <ServiceCallbackQueue staff={staff} onOpenRequest={openDetailById} caps={caps} />
           </TabsContent>
         )}
 
         {/* Планы */}
         {caps.tabs.includes("plans") && (
           <TabsContent value="plans" className="mt-4">
-            <ServicePlans
-              staff={staff}
-              caps={caps}
-              currentUserId={user?.id ?? null}
-            />
+            <ServicePlans staff={staff} caps={caps} currentUserId={user?.id ?? null} />
           </TabsContent>
         )}
       </Tabs>
