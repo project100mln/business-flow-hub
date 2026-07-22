@@ -120,6 +120,9 @@ function Service() {
 
   const del = useMutation({
     mutationFn: async (id: string) => {
+      // Прикладная проверка перед мутацией — не только скрытая кнопка.
+      // Реальная защита — RLS (см. серверный гэп в отчёте).
+      if (!caps.canDeleteRequest) throw new Error(DENIED_MESSAGE);
       const { error } = await supabase.from("service_requests").delete().eq("id", id);
       if (error) throw error;
     },
@@ -157,7 +160,12 @@ function Service() {
 
   // ---- filtered list ----
   const filtered = useMemo(() => {
-    let list = items;
+    // Клиентское сужение для исполнителя: только его заявки. Это НЕ
+    // безопасность — RLS должна фильтровать на сервере. Если БД вернула
+    // чужие строки, мы их скроем в UI, но не заявляем, что это защита.
+    let list = caps.onlyAssignedInUI && user?.id
+      ? items.filter((i) => i.assignee_id === user.id)
+      : items;
     if (search.trim()) {
       const s = search.toLowerCase();
       list = list.filter(
@@ -191,6 +199,8 @@ function Service() {
     fDate,
     onlyOverdue,
     onlyToday,
+    caps.onlyAssignedInUI,
+    user?.id,
   ]);
 
   const openDetail = (r: ServiceRequestWithRefs) => {
