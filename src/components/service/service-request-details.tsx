@@ -310,7 +310,7 @@ export function ServiceRequestDetails({
               </div>
             )}
             {target === "rescheduled" && (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <Label>Новая дата *</Label>
                   <Input
@@ -407,7 +407,7 @@ export function ServiceRequestDetails({
                 <Label className="text-xs uppercase tracking-wide text-muted-foreground">
                   Новый перезвон
                 </Label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div>
                     <Label>Когда *</Label>
                     <Input
@@ -551,10 +551,10 @@ function NoAnswer({
       </Button>
     );
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex flex-wrap items-center gap-1 w-full sm:w-auto">
       <Input
         type="datetime-local"
-        className="h-8"
+        className="h-8 min-w-0 flex-1 sm:flex-none"
         value={when}
         onChange={(e) => setWhen(e.target.value)}
       />

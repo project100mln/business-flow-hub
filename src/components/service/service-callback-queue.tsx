@@ -123,16 +123,20 @@ export function ServiceCallbackQueue({
             {g.items.map((t) => (
               <div
                 key={t.id}
-                className="flex items-center justify-between gap-3 rounded-lg border border-border p-2.5 text-sm"
+                className="flex flex-wrap sm:flex-nowrap items-start sm:items-center justify-between gap-2 sm:gap-3 rounded-lg border border-border p-2.5 text-sm"
               >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-[10px]">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <Badge variant="outline" className="text-[10px] shrink-0">
                       {TYPE_LABEL[t.task_type ?? ""] || t.task_type}
                     </Badge>
-                    <span className="font-medium truncate">{t.clients?.full_name || "—"}</span>
+                    <span className="font-medium truncate max-w-full">
+                      {t.clients?.full_name || "—"}
+                    </span>
                     {t.clients?.phone && (
-                      <span className="text-muted-foreground text-xs">{t.clients.phone}</span>
+                      <span className="text-muted-foreground text-xs truncate">
+                        {t.clients.phone}
+                      </span>
                     )}
                   </div>
                   <div
@@ -141,7 +145,7 @@ export function ServiceCallbackQueue({
                     {fmtDateTime(t.due_at)} · {staffName(t.assignee_id)}
                   </div>
                   {t.description && (
-                    <p className="text-xs text-muted-foreground line-clamp-1">{t.description}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{t.description}</p>
                   )}
                 </div>
                 <div className="flex shrink-0 gap-1">
