@@ -47,11 +47,13 @@ export function ServiceRequestDialog({
   onOpenChange,
   editing,
   currentUserId,
+  caps,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   editing: Editing;
   currentUserId: string | null;
+  caps: ServiceCapabilities;
 }) {
   const qc = useQueryClient();
   const isEdit = !!editing?.id;
