@@ -232,9 +232,24 @@ function Service() {
     return n ? SERVICE_STATUS[n] : "—";
   };
 
+  if (!caps.canViewService) {
+    return (
+      <div className="p-4 sm:p-6 md:p-8">
+        <div className="mx-auto max-w-md rounded-2xl border border-border bg-surface/40 p-6 text-center">
+          <h1 className="text-lg font-semibold">Сервис недоступен</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Ваша роль не участвует в диспетчеризации сервисных заявок. Если это ошибка —
+            обратитесь к администратору.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6 md:p-8 space-y-6">
+    <div className="p-4 sm:p-6 md:p-8 space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
+
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Сервис</h1>
           <p className="mt-1 text-sm text-muted-foreground">
