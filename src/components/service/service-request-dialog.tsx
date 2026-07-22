@@ -24,7 +24,11 @@ import { Badge } from "@/components/ui/badge";
 import { Search, UserPlus, AlertTriangle, Check } from "lucide-react";
 import { toast } from "sonner";
 import { PRIORITY, SERVICE_TYPE, normalizePhone, type ServiceRequestWithRefs } from "@/lib/service";
-import { serviceKeys, invalidateServiceRequest, invalidateServicePlans } from "@/lib/service-queries";
+import {
+  serviceKeys,
+  invalidateServiceRequest,
+  invalidateServicePlans,
+} from "@/lib/service-queries";
 
 type Editing = ServiceRequestWithRefs | null;
 
@@ -129,10 +133,7 @@ export function ServiceRequestDialog({
   const { data: objects = [] } = useQuery({
     queryKey: serviceKeys.objects(),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("objects")
-        .select("id, name")
-        .order("name");
+      const { data, error } = await supabase.from("objects").select("id, name").order("name");
       if (error) throw error;
       return data ?? [];
     },
@@ -140,10 +141,7 @@ export function ServiceRequestDialog({
   const { data: products = [] } = useQuery({
     queryKey: serviceKeys.products(),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("id, name")
-        .order("name");
+      const { data, error } = await supabase.from("products").select("id, name").order("name");
       if (error) throw error;
       return data ?? [];
     },

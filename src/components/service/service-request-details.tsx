@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { PhoneCall, History, Info, CalendarClock, ArrowRight } from "lucide-react";
+import { PhoneCall, History, Info, CalendarClock, ArrowRight, Pencil } from "lucide-react";
 import {
   SERVICE_STATUS,
   STATUS_TONE,
@@ -39,12 +39,14 @@ export function ServiceRequestDetails({
   onOpenChange,
   staff,
   currentUserId,
+  onEdit,
 }: {
   request: ServiceRequestWithRefs | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
   staff: StaffOption[];
   currentUserId: string | null;
+  onEdit?: (r: ServiceRequestWithRefs) => void;
 }) {
   const qc = useQueryClient();
   const id = request?.id;
@@ -65,6 +67,11 @@ export function ServiceRequestDetails({
     mutationFn: async () => {
       if (!id) throw new Error("Заявка не выбрана");
       if (!target) throw new Error("Выберите новый статус");
+      // Клиентская проверка FSM — сервер повторно валидирует триггером.
+      const allowedNow = request ? (TRANSITIONS[request.status] ?? []) : [];
+      if (!allowedNow.includes(target)) {
+        throw new Error("Такой переход не допускается из текущего статуса");
+      }
       const patch: ServiceRequestUpdate = { status: target };
       if (target === "done") {
         if (!resolution.trim()) throw new Error("Опишите результат (resolution)");
@@ -215,12 +222,24 @@ export function ServiceRequestDetails({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
         <SheetHeader>
-          <SheetTitle className="flex items-center gap-2 flex-wrap">
-            {request.issue?.slice(0, 60) || "Заявка"}
-            <Badge variant="outline" className={STATUS_TONE[request.status]}>
-              {SERVICE_STATUS[request.status] || request.status}
-            </Badge>
-          </SheetTitle>
+          <div className="flex items-start justify-between gap-2">
+            <SheetTitle className="flex items-center gap-2 flex-wrap">
+              {request.issue?.slice(0, 60) || "Заявка"}
+              <Badge variant="outline" className={STATUS_TONE[request.status]}>
+                {SERVICE_STATUS[request.status] || request.status}
+              </Badge>
+            </SheetTitle>
+            {onEdit && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onEdit(request)}
+                className="shrink-0"
+              >
+                <Pencil className="size-4 mr-1" /> Редактировать
+              </Button>
+            )}
+          </div>
         </SheetHeader>
 
         {/* ---- Смена статуса ---- */}
@@ -244,7 +263,19 @@ export function ServiceRequestDetails({
               </Select>
               <Button
                 size="sm"
-                onClick={() => changeStatus.mutate()}
+                onClick={() => {
+                  if (
+                    target === "cancelled" &&
+                    !confirm("Отменить заявку? Действие фиксируется в истории.")
+                  )
+                    return;
+                  if (
+                    target === "done" &&
+                    !confirm("Завершить заявку? Действие фиксируется в истории.")
+                  )
+                    return;
+                  changeStatus.mutate();
+                }}
                 disabled={!target || changeStatus.isPending}
               >
                 <ArrowRight className="size-4" />
@@ -430,12 +461,14 @@ export function ServiceRequestDetails({
                   {t.status !== "done" && (
                     <div className="flex gap-2 pt-1">
                       <NoAnswer
+                        disabled={rescheduleCallback.isPending}
                         onReschedule={(when) => rescheduleCallback.mutate({ task: t, when })}
                       />
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => closeCallback.mutate(t.id)}
+                        disabled={closeCallback.isPending}
                       >
                         Дозвонились
                       </Button>
@@ -492,12 +525,18 @@ function Row({ label, value }: { label: string; value?: string | null }) {
   );
 }
 
-function NoAnswer({ onReschedule }: { onReschedule: (when: string) => void }) {
+function NoAnswer({
+  onReschedule,
+  disabled,
+}: {
+  onReschedule: (when: string) => void;
+  disabled?: boolean;
+}) {
   const [when, setWhen] = useState("");
   const [openIt, setOpenIt] = useState(false);
   if (!openIt)
     return (
-      <Button size="sm" variant="outline" onClick={() => setOpenIt(true)}>
+      <Button size="sm" variant="outline" onClick={() => setOpenIt(true)} disabled={disabled}>
         Не дозвонились
       </Button>
     );
@@ -511,7 +550,7 @@ function NoAnswer({ onReschedule }: { onReschedule: (when: string) => void }) {
       />
       <Button
         size="sm"
-        disabled={!when}
+        disabled={!when || disabled}
         onClick={() => {
           onReschedule(when);
           setOpenIt(false);
