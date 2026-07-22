@@ -396,7 +396,18 @@ function Service() {
                 {filtered.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={13} className="text-center text-muted-foreground py-12">
-                      Заявок не найдено
+                      {itemsLoading ? (
+                        <span className="inline-flex items-center gap-2">
+                          <Loader2 className="size-4 animate-spin" /> Загружаем заявки…
+                        </span>
+                      ) : itemsError ? (
+                        <span className="inline-flex items-center gap-2 text-destructive">
+                          <AlertCircle className="size-4" /> Ошибка загрузки:{" "}
+                          {itemsError.message}
+                        </span>
+                      ) : (
+                        "Заявок не найдено"
+                      )}
                     </TableCell>
                   </TableRow>
                 )}
