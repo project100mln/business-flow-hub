@@ -82,6 +82,26 @@ export function ServiceCallbackQueue({
     service_upcoming: "Предстоящий сервис",
   };
 
+  if (isLoading && tasks.length === 0) {
+    return (
+      <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" /> Загружаем задачи…
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="rounded-2xl border border-destructive/40 bg-destructive/5 p-6 flex flex-col items-center gap-3">
+        <div className="flex items-center gap-2 text-destructive text-sm">
+          <AlertCircle className="size-4" /> Не удалось загрузить задачи: {error.message}
+        </div>
+        <Button size="sm" variant="outline" onClick={() => refetch()}>
+          Повторить
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {groups.map((g) => (
