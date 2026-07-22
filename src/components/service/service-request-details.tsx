@@ -50,14 +50,7 @@ export function ServiceRequestDetails({
   const id = request?.id;
   const staffName = (uid?: string | null) => staff.find((s) => s.id === uid)?.full_name || "—";
 
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ["service"] });
-    qc.invalidateQueries({ queryKey: ["service-events", id] });
-    qc.invalidateQueries({ queryKey: ["service-callbacks", id] });
-    // общий префикс: обновляем и KPI (["service-tasks","kpi"]),
-    // и очередь перезвонов (["service-tasks","callbacks","queue"])
-    qc.invalidateQueries({ queryKey: ["service-tasks"] });
-  };
+  const invalidate = () => invalidateServiceRequest(qc, id);
 
   // ---- transition state ----
   const [target, setTarget] = useState("");
