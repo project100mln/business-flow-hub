@@ -92,6 +92,30 @@ export const SERVICE_TYPE: Record<string, string> = {
   maintenance: "Периодический",
 };
 
+// Типы работ по плану обслуживания. Храним в service_plans.service_type
+// (свободный text в схеме), в UI показываем русские названия.
+export const PLAN_SERVICE_TYPES: Record<string, string> = {
+  cartridge_replacement: "Замена картриджей",
+  membrane_replacement: "Замена мембраны",
+  scheduled_service: "Плановый сервис",
+  preventive: "Профилактика (HYLA)",
+  diagnostic: "Диагностика",
+  warranty: "Гарантийное обслуживание",
+  revisit: "Повторный визит",
+};
+
+// Направление обслуживания — только для группировки в UI,
+// в базе отдельного поля нет.
+export const PLAN_DIRECTION: Record<string, "water" | "hyla"> = {
+  cartridge_replacement: "water",
+  membrane_replacement: "water",
+  scheduled_service: "water",
+  preventive: "hyla",
+  diagnostic: "hyla",
+  warranty: "hyla",
+  revisit: "hyla",
+};
+
 export const TASK_TYPE: Record<string, string> = {
   service_callback: "Перезвон",
   service_feedback: "Обратная связь",

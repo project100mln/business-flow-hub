@@ -204,6 +204,17 @@ function Service() {
     if (fresh && fresh !== detail) setDetail(fresh);
   }, [items, detail]);
 
+  // Открытие заявки из карточки плана обслуживания.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const id = (e as CustomEvent<string>).detail;
+      if (typeof id === "string") openDetailById(id);
+    };
+    window.addEventListener("orbit:open-service-request", handler as EventListener);
+    return () => window.removeEventListener("orbit:open-service-request", handler as EventListener);
+    // openDetailById зависит от items → перерегистрируем при обновлении списка
+  }, [items]);
+
   const nextStep = (r: ServiceRequestWithRefs) => {
     if (r.status === "done" || r.status === "cancelled") return "—";
     const n = TRANSITIONS[r.status]?.[0];
@@ -422,7 +433,12 @@ function Service() {
 
         {/* Планы */}
         <TabsContent value="plans" className="mt-4">
-          <ServicePlans staff={staff} isAdmin={isAdmin} />
+          <ServicePlans
+            staff={staff}
+            isAdmin={isAdmin}
+            canManage={isAdmin || hasRole("manager") || hasRole("coordinator")}
+            currentUserId={user?.id ?? null}
+          />
         </TabsContent>
       </Tabs>
 

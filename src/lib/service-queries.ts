@@ -22,6 +22,7 @@ export const serviceKeys = {
 
   plans: () => ["service-plans"] as const,
   plan: (id?: string | null) => ["service-plan", id] as const,
+  planRequests: (id?: string | null) => ["service-plan-requests", id] as const,
 };
 
 // Массово обновляем всё, что связано с сервисной заявкой: списки, доска,
