@@ -512,7 +512,7 @@ export function ServiceRequestDialog({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>
                 {periodic ? "Первый визит *" : "Дата и время"}
@@ -526,10 +526,12 @@ export function ServiceRequestDialog({
                 onChange={(e) => setScheduledAt(e.target.value)}
               />
             </div>
-            <div>
-              <Label>Стоимость, ₸</Label>
-              <Input type="number" value={cost} onChange={(e) => setCost(e.target.value)} />
-            </div>
+            {caps.canEditFinancialFields && (
+              <div>
+                <Label>Стоимость, ₸</Label>
+                <Input type="number" value={cost} onChange={(e) => setCost(e.target.value)} />
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
