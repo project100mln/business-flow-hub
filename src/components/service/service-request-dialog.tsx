@@ -241,7 +241,7 @@ export function ServiceRequestDialog({
         return;
       }
 
-      const payload: Record<string, unknown> = {
+      const basePayload = {
         client_id: clientId || null,
         object_id: objectId || null,
         product_id: productId || null,
@@ -253,15 +253,15 @@ export function ServiceRequestDialog({
         assignee_id: assigneeId || null,
         notes: notes || null,
       };
-      // Финансовые поля меняем ТОЛЬКО если у роли есть право. Иначе
-      // не вырезаем и не перезаписываем стоимость — payload вообще не
-      // содержит поля `cost`. При создании (isEdit=false) без права
-      // сохраняем 0 по умолчанию.
-      if (caps.canEditFinancialFields) {
-        payload.cost = cost ? Number(cost) : 0;
-      } else if (!isEdit) {
-        payload.cost = 0;
-      }
+      // Финансовые поля меняем ТОЛЬКО если у роли есть право. При
+      // редактировании без права поле `cost` в payload не попадает,
+      // при создании оператор получает 0 по умолчанию. Реальная
+      // защита должна дублироваться на уровне RLS/триггера БД.
+      const payload = caps.canEditFinancialFields
+        ? { ...basePayload, cost: cost ? Number(cost) : 0 }
+        : isEdit
+          ? basePayload
+          : { ...basePayload, cost: 0 };
       if (isEdit) {
         // статус здесь НЕ меняем — переходы идут через карточку заявки (FSM)
         const { error } = await supabase
