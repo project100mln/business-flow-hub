@@ -195,6 +195,15 @@ function Service() {
     const r = items.find((x) => x.id === id);
     if (r) openDetail(r);
   };
+  // После refetch (смена статуса, редактирование, перенос, перезвон)
+  // подтягиваем свежую версию открытой карточки, чтобы имя клиента,
+  // телефон, ответственный, статус и таймлайн не «застревали».
+  useEffect(() => {
+    if (!detail) return;
+    const fresh = items.find((x) => x.id === detail.id);
+    if (fresh && fresh !== detail) setDetail(fresh);
+  }, [items, detail]);
+
   const nextStep = (r: ServiceRequestWithRefs) => {
     if (r.status === "done" || r.status === "cancelled") return "—";
     const n = TRANSITIONS[r.status]?.[0];
