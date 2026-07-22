@@ -115,32 +115,51 @@ export function ServiceRequestDialog({
 
   // сотрудники — только из profiles текущей компании (RLS ограничивает компанией)
   const { data: staff = [] } = useQuery({
-    queryKey: ["service-staff"],
-    queryFn: async () =>
-      (await supabase.from("profiles").select("id, full_name").order("full_name")).data ?? [],
+    queryKey: serviceKeys.staff(),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .order("full_name");
+      if (error) throw error;
+      return data ?? [];
+    },
   });
   const { data: objects = [] } = useQuery({
-    queryKey: ["objects-min"],
-    queryFn: async () =>
-      (await supabase.from("objects").select("id, name").order("name")).data ?? [],
+    queryKey: serviceKeys.objects(),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("objects")
+        .select("id, name")
+        .order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
   });
   const { data: products = [] } = useQuery({
-    queryKey: ["products-min"],
-    queryFn: async () =>
-      (await supabase.from("products").select("id, name").order("name")).data ?? [],
+    queryKey: serviceKeys.products(),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("id, name")
+        .order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
   });
 
   // поиск клиентов по телефону/имени/адресу
   const { data: matches = [] } = useQuery({
-    queryKey: ["client-search", clientSearch],
+    queryKey: serviceKeys.clientSearch(clientSearch),
     enabled: clientSearch.trim().length >= 2,
     queryFn: async () => {
       const s = clientSearch.replace(/[%,]/g, " ").trim();
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("clients")
         .select("id, full_name, phone, address")
         .or(`full_name.ilike.%${s}%,phone.ilike.%${s}%,address.ilike.%${s}%`)
         .limit(8);
+      if (error) throw error;
       return data ?? [];
     },
   });
@@ -148,10 +167,11 @@ export function ServiceRequestDialog({
   // потенциальные дубли по нормализованному телефону нового клиента
   const normNew = normalizePhone(newClient.phone);
   const { data: dupes = [] } = useQuery({
-    queryKey: ["client-dupe", normNew],
+    queryKey: serviceKeys.clientDupe(normNew),
     enabled: showNewClient && normNew.length >= 5,
     queryFn: async () => {
-      const { data } = await supabase.from("clients").select("id, full_name, phone");
+      const { data, error } = await supabase.from("clients").select("id, full_name, phone");
+      if (error) throw error;
       return (data ?? []).filter((c) => normalizePhone(c.phone) === normNew);
     },
   });
