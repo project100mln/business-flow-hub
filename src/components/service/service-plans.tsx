@@ -88,7 +88,25 @@ export function ServicePlans({ staff, isAdmin }: { staff: StaffOption[]; isAdmin
           {plans.length === 0 && (
             <TableRow>
               <TableCell colSpan={7} className="text-center text-muted-foreground py-12">
-                Планов обслуживания пока нет
+                {isLoading ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 className="size-4 animate-spin" /> Загружаем планы…
+                  </span>
+                ) : error ? (
+                  <span className="inline-flex items-center gap-2 text-destructive">
+                    <AlertCircle className="size-4" /> Ошибка загрузки: {error.message}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="ml-2"
+                      onClick={() => refetch()}
+                    >
+                      Повторить
+                    </Button>
+                  </span>
+                ) : (
+                  "Планов обслуживания пока нет"
+                )}
               </TableCell>
             </TableRow>
           )}
