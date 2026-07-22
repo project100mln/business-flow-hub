@@ -67,31 +67,48 @@ function Service() {
   const [onlyOverdue, setOnlyOverdue] = useState(false);
   const [onlyToday, setOnlyToday] = useState(false);
 
-  const { data: items = [] } = useQuery({
-    queryKey: ["service"],
-    queryFn: async () =>
-      (
-        await supabase
-          .from("service_requests")
-          .select("*, clients(full_name, phone, address), objects(name, address)")
-          .order("created_at", { ascending: false })
-      ).data ?? [],
+  const {
+    data: items = [],
+    isLoading: itemsLoading,
+    error: itemsError,
+    refetch: refetchItems,
+  } = useQuery({
+    queryKey: serviceKeys.list(),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("service_requests")
+        .select("*, clients(full_name, phone, address), objects(name, address)")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as ServiceRequestWithRefs[];
+    },
   });
-  const { data: staff = [] } = useQuery({
-    queryKey: ["service-staff"],
-    queryFn: async () =>
-      (await supabase.from("profiles").select("id, full_name").order("full_name")).data ?? [],
+  const { data: staff = [], error: staffError } = useQuery({
+    queryKey: serviceKeys.staff(),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .order("full_name");
+      if (error) throw error;
+      return data ?? [];
+    },
   });
   const { data: serviceTasks = [] } = useQuery({
-    queryKey: ["service-tasks", "kpi"],
-    queryFn: async () =>
-      (
-        await supabase
-          .from("tasks")
-          .select("id, task_type, status, due_at")
-          .in("task_type", ["service_callback", "service_feedback", "service_upcoming"])
-      ).data ?? [],
+    queryKey: serviceKeys.tasksKpi(),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("id, task_type, status, due_at")
+        .in("task_type", ["service_callback", "service_feedback", "service_upcoming"]);
+      if (error) throw error;
+      return data ?? [];
+    },
   });
+
+  useEffect(() => {
+    if (staffError) toast.error(`Не удалось загрузить сотрудников: ${staffError.message}`);
+  }, [staffError]);
 
   const staffName = (uid?: string | null) => staff.find((s) => s.id === uid)?.full_name || "—";
 
@@ -100,9 +117,9 @@ function Service() {
       const { error } = await supabase.from("service_requests").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_v, id) => {
       toast.success("Удалено");
-      qc.invalidateQueries({ queryKey: ["service"] });
+      invalidateServiceRequest(qc, id);
     },
     onError: (e: Error) => toast.error(e.message),
   });
