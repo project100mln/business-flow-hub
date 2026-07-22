@@ -241,7 +241,7 @@ export function ServiceRequestDialog({
         return;
       }
 
-      const payload = {
+      const payload: Record<string, unknown> = {
         client_id: clientId || null,
         object_id: objectId || null,
         product_id: productId || null,
@@ -251,9 +251,17 @@ export function ServiceRequestDialog({
         scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : null,
         coordinator_id: coordinatorId || null,
         assignee_id: assigneeId || null,
-        cost: cost ? Number(cost) : 0,
         notes: notes || null,
       };
+      // Финансовые поля меняем ТОЛЬКО если у роли есть право. Иначе
+      // не вырезаем и не перезаписываем стоимость — payload вообще не
+      // содержит поля `cost`. При создании (isEdit=false) без права
+      // сохраняем 0 по умолчанию.
+      if (caps.canEditFinancialFields) {
+        payload.cost = cost ? Number(cost) : 0;
+      } else if (!isEdit) {
+        payload.cost = 0;
+      }
       if (isEdit) {
         // статус здесь НЕ меняем — переходы идут через карточку заявки (FSM)
         const { error } = await supabase
