@@ -2,9 +2,11 @@ import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { AlertCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { fmtDateTime, isOverdue, isToday, type StaffOption } from "@/lib/service";
+import { serviceKeys } from "@/lib/service-queries";
 
 // Очереди перезвонов/сервисных задач: Просроченные, Сегодня, Предстоящие, Без ответа, Завершённые.
 export function ServiceCallbackQueue({
@@ -17,16 +19,22 @@ export function ServiceCallbackQueue({
   const qc = useQueryClient();
   const staffName = (uid?: string | null) => staff.find((s) => s.id === uid)?.full_name || "—";
 
-  const { data: tasks = [] } = useQuery({
-    queryKey: ["service-tasks", "callbacks", "queue"],
-    queryFn: async () =>
-      (
-        await supabase
-          .from("tasks")
-          .select("*, clients(full_name, phone)")
-          .in("task_type", ["service_callback", "service_feedback", "service_upcoming"])
-          .order("due_at", { ascending: true })
-      ).data ?? [],
+  const {
+    data: tasks = [],
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: serviceKeys.tasksCallbacksQueue(),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("*, clients(full_name, phone)")
+        .in("task_type", ["service_callback", "service_feedback", "service_upcoming"])
+        .order("due_at", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
   });
 
   const done = useMutation({
@@ -37,7 +45,7 @@ export function ServiceCallbackQueue({
     onSuccess: () => {
       toast.success("Завершено");
       // общий префикс: обновляем и KPI, и очередь перезвонов
-      qc.invalidateQueries({ queryKey: ["service-tasks"] });
+      qc.invalidateQueries({ queryKey: serviceKeys.tasksAll });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -73,6 +81,26 @@ export function ServiceCallbackQueue({
     service_feedback: "Обратная связь",
     service_upcoming: "Предстоящий сервис",
   };
+
+  if (isLoading && tasks.length === 0) {
+    return (
+      <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" /> Загружаем задачи…
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="rounded-2xl border border-destructive/40 bg-destructive/5 p-6 flex flex-col items-center gap-3">
+        <div className="flex items-center gap-2 text-destructive text-sm">
+          <AlertCircle className="size-4" /> Не удалось загрузить задачи: {error.message}
+        </div>
+        <Button size="sm" variant="outline" onClick={() => refetch()}>
+          Повторить
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

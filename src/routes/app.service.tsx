@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Trash2, Eye } from "lucide-react";
+import { Plus, Trash2, Eye, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -37,6 +37,7 @@ import {
   type ServiceRequestWithRefs,
   type StaffOption,
 } from "@/lib/service";
+import { serviceKeys, invalidateServiceRequest } from "@/lib/service-queries";
 import { ServiceRequestDialog } from "@/components/service/service-request-dialog";
 import { ServiceRequestDetails } from "@/components/service/service-request-details";
 import { ServiceBoard } from "@/components/service/service-board";
@@ -66,31 +67,48 @@ function Service() {
   const [onlyOverdue, setOnlyOverdue] = useState(false);
   const [onlyToday, setOnlyToday] = useState(false);
 
-  const { data: items = [] } = useQuery({
-    queryKey: ["service"],
-    queryFn: async () =>
-      (
-        await supabase
-          .from("service_requests")
-          .select("*, clients(full_name, phone, address), objects(name, address)")
-          .order("created_at", { ascending: false })
-      ).data ?? [],
+  const {
+    data: items = [],
+    isLoading: itemsLoading,
+    error: itemsError,
+    refetch: refetchItems,
+  } = useQuery({
+    queryKey: serviceKeys.list(),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("service_requests")
+        .select("*, clients(full_name, phone, address), objects(name, address)")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as ServiceRequestWithRefs[];
+    },
   });
-  const { data: staff = [] } = useQuery({
-    queryKey: ["service-staff"],
-    queryFn: async () =>
-      (await supabase.from("profiles").select("id, full_name").order("full_name")).data ?? [],
+  const { data: staff = [], error: staffError } = useQuery({
+    queryKey: serviceKeys.staff(),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .order("full_name");
+      if (error) throw error;
+      return data ?? [];
+    },
   });
   const { data: serviceTasks = [] } = useQuery({
-    queryKey: ["service-tasks", "kpi"],
-    queryFn: async () =>
-      (
-        await supabase
-          .from("tasks")
-          .select("id, task_type, status, due_at")
-          .in("task_type", ["service_callback", "service_feedback", "service_upcoming"])
-      ).data ?? [],
+    queryKey: serviceKeys.tasksKpi(),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("id, task_type, status, due_at")
+        .in("task_type", ["service_callback", "service_feedback", "service_upcoming"]);
+      if (error) throw error;
+      return data ?? [];
+    },
   });
+
+  useEffect(() => {
+    if (staffError) toast.error(`Не удалось загрузить сотрудников: ${staffError.message}`);
+  }, [staffError]);
 
   const staffName = (uid?: string | null) => staff.find((s) => s.id === uid)?.full_name || "—";
 
@@ -99,9 +117,9 @@ function Service() {
       const { error } = await supabase.from("service_requests").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_v, id) => {
       toast.success("Удалено");
-      qc.invalidateQueries({ queryKey: ["service"] });
+      invalidateServiceRequest(qc, id);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -177,6 +195,15 @@ function Service() {
     const r = items.find((x) => x.id === id);
     if (r) openDetail(r);
   };
+  // После refetch (смена статуса, редактирование, перенос, перезвон)
+  // подтягиваем свежую версию открытой карточки, чтобы имя клиента,
+  // телефон, ответственный, статус и таймлайн не «застревали».
+  useEffect(() => {
+    if (!detail) return;
+    const fresh = items.find((x) => x.id === detail.id);
+    if (fresh && fresh !== detail) setDetail(fresh);
+  }, [items, detail]);
+
   const nextStep = (r: ServiceRequestWithRefs) => {
     if (r.status === "done" || r.status === "cancelled") return "—";
     const n = TRANSITIONS[r.status]?.[0];
@@ -231,7 +258,13 @@ function Service() {
 
         {/* Доска */}
         <TabsContent value="board" className="mt-4">
-          <ServiceBoard items={items} onOpen={openDetail} />
+          <ServiceBoard
+            items={items}
+            isLoading={itemsLoading}
+            error={itemsError}
+            onRetry={() => refetchItems()}
+            onOpen={openDetail}
+          />
         </TabsContent>
 
         {/* Все заявки */}
@@ -363,7 +396,18 @@ function Service() {
                 {filtered.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={13} className="text-center text-muted-foreground py-12">
-                      Заявок не найдено
+                      {itemsLoading ? (
+                        <span className="inline-flex items-center gap-2">
+                          <Loader2 className="size-4 animate-spin" /> Загружаем заявки…
+                        </span>
+                      ) : itemsError ? (
+                        <span className="inline-flex items-center gap-2 text-destructive">
+                          <AlertCircle className="size-4" /> Ошибка загрузки:{" "}
+                          {itemsError.message}
+                        </span>
+                      ) : (
+                        "Заявок не найдено"
+                      )}
                     </TableCell>
                   </TableRow>
                 )}

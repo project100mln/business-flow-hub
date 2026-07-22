@@ -1,16 +1,21 @@
-import type { Tables, TablesUpdate } from "@/integrations/supabase/types";
+import type { TenantDatabase } from "@/integrations/supabase/types-tenant";
 
-// ---- Типы строк сервисного модуля (из сгенерированных Supabase-типов) ----
-export type ServiceRequestRow = Tables<"service_requests">;
-export type ServicePlanRow = Tables<"service_plans">;
-export type ServiceEventRow = Tables<"service_events">;
-export type ServiceTaskRow = Tables<"tasks">;
-export type ServiceRequestUpdate = TablesUpdate<"service_requests">;
+// ---- Типы строк сервисного модуля ----
+// Берём типы из TenantDatabase (types-tenant.ts), а не из сгенерированного
+// types.ts — там ещё нет service_plans/service_events и новых полей
+// service_requests/tasks (миграция expand применена в БД, но клиентские
+// типы регенерируют отдельно).
+type TenantTables = TenantDatabase["public"]["Tables"];
+export type ServiceRequestRow = TenantTables["service_requests"]["Row"];
+export type ServicePlanRow = TenantTables["service_plans"]["Row"];
+export type ServiceEventRow = TenantTables["service_events"]["Row"];
+export type ServiceTaskRow = TenantTables["tasks"]["Row"];
+export type ServiceRequestUpdate = TenantTables["service_requests"]["Update"];
 
-// Заявка, как её выбирают экраны сервиса: строка + join клиент/объект.
+// Заявка, как её выбирают экраны сервиса: строка + join клиент/объект/адрес.
 export type ServiceRequestWithRefs = ServiceRequestRow & {
-  clients?: { full_name: string | null; phone?: string | null } | null;
-  objects?: { name: string | null } | null;
+  clients?: { full_name: string | null; phone?: string | null; address?: string | null } | null;
+  objects?: { name: string | null; address?: string | null } | null;
 };
 
 // Справочник сотрудников, как его выбирают экраны сервиса (profiles: id + имя).

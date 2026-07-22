@@ -509,7 +509,8 @@ export type Database = {
           operator_id: string | null
           phone: string
           quiz_completed_at: string | null
-          score: number
+          score: number | null
+          source: string
           status: Database["public"]["Enums"]["hyla_lead_status"]
           updated_at: string
           utm_campaign: string | null
@@ -535,7 +536,8 @@ export type Database = {
           operator_id?: string | null
           phone: string
           quiz_completed_at?: string | null
-          score?: number
+          score?: number | null
+          source?: string
           status?: Database["public"]["Enums"]["hyla_lead_status"]
           updated_at?: string
           utm_campaign?: string | null
@@ -561,7 +563,8 @@ export type Database = {
           operator_id?: string | null
           phone?: string
           quiz_completed_at?: string | null
-          score?: number
+          score?: number | null
+          source?: string
           status?: Database["public"]["Enums"]["hyla_lead_status"]
           updated_at?: string
           utm_campaign?: string | null
@@ -1060,252 +1063,58 @@ export type Database = {
           },
         ]
       }
-      service_events: {
-        Row: {
-          actor_id: string | null
-          company_id: string
-          event_type: string
-          from_status: string | null
-          id: string
-          metadata: Json
-          notes: string | null
-          occurred_at: string
-          service_request_id: string
-          to_status: string | null
-        }
-        Insert: {
-          actor_id?: string | null
-          company_id: string
-          event_type: string
-          from_status?: string | null
-          id?: string
-          metadata?: Json
-          notes?: string | null
-          occurred_at?: string
-          service_request_id: string
-          to_status?: string | null
-        }
-        Update: {
-          actor_id?: string | null
-          company_id?: string
-          event_type?: string
-          from_status?: string | null
-          id?: string
-          metadata?: Json
-          notes?: string | null
-          occurred_at?: string
-          service_request_id?: string
-          to_status?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "service_events_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "service_events_service_request_id_fkey"
-            columns: ["service_request_id"]
-            isOneToOne: false
-            referencedRelation: "service_requests"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      service_plans: {
-        Row: {
-          assignee_id: string | null
-          client_id: string
-          company_id: string
-          coordinator_id: string | null
-          created_at: string
-          created_by: string | null
-          estimated_cost: number | null
-          id: string
-          interval_days: number
-          is_active: boolean
-          issue_template: string
-          last_generated_at: string | null
-          name: string
-          next_visit_at: string
-          notes: string | null
-          object_id: string | null
-          priority: string
-          product_id: string | null
-          service_type: string
-          updated_at: string
-        }
-        Insert: {
-          assignee_id?: string | null
-          client_id: string
-          company_id: string
-          coordinator_id?: string | null
-          created_at?: string
-          created_by?: string | null
-          estimated_cost?: number | null
-          id?: string
-          interval_days: number
-          is_active?: boolean
-          issue_template: string
-          last_generated_at?: string | null
-          name: string
-          next_visit_at: string
-          notes?: string | null
-          object_id?: string | null
-          priority?: string
-          product_id?: string | null
-          service_type?: string
-          updated_at?: string
-        }
-        Update: {
-          assignee_id?: string | null
-          client_id?: string
-          company_id?: string
-          coordinator_id?: string | null
-          created_at?: string
-          created_by?: string | null
-          estimated_cost?: number | null
-          id?: string
-          interval_days?: number
-          is_active?: boolean
-          issue_template?: string
-          last_generated_at?: string | null
-          name?: string
-          next_visit_at?: string
-          notes?: string | null
-          object_id?: string | null
-          priority?: string
-          product_id?: string | null
-          service_type?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "service_plans_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "service_plans_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "service_plans_object_id_fkey"
-            columns: ["object_id"]
-            isOneToOne: false
-            referencedRelation: "objects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "service_plans_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       service_requests: {
         Row: {
-          arrived_at: string | null
           assignee_id: string | null
           client_id: string | null
           company_id: string
           completed_at: string | null
-          confirmed_at: string | null
-          coordinator_id: string | null
           cost: number | null
           created_at: string
           created_by: string | null
-          departed_at: string | null
-          feedback_due_at: string | null
           id: string
           issue: string
           notes: string | null
           object_id: string | null
-          previous_service_request_id: string | null
           priority: string
-          problem_resolved: boolean | null
           product_id: string | null
-          reschedule_count: number
-          reschedule_reason: string | null
-          rescheduled_from: string | null
-          resolution: string | null
           scheduled_at: string | null
-          service_plan_id: string | null
-          service_type: string
-          started_at: string | null
           status: string
           updated_at: string
         }
         Insert: {
-          arrived_at?: string | null
           assignee_id?: string | null
           client_id?: string | null
           company_id: string
           completed_at?: string | null
-          confirmed_at?: string | null
-          coordinator_id?: string | null
           cost?: number | null
           created_at?: string
           created_by?: string | null
-          departed_at?: string | null
-          feedback_due_at?: string | null
           id?: string
           issue: string
           notes?: string | null
           object_id?: string | null
-          previous_service_request_id?: string | null
           priority?: string
-          problem_resolved?: boolean | null
           product_id?: string | null
-          reschedule_count?: number
-          reschedule_reason?: string | null
-          rescheduled_from?: string | null
-          resolution?: string | null
           scheduled_at?: string | null
-          service_plan_id?: string | null
-          service_type?: string
-          started_at?: string | null
           status?: string
           updated_at?: string
         }
         Update: {
-          arrived_at?: string | null
           assignee_id?: string | null
           client_id?: string | null
           company_id?: string
           completed_at?: string | null
-          confirmed_at?: string | null
-          coordinator_id?: string | null
           cost?: number | null
           created_at?: string
           created_by?: string | null
-          departed_at?: string | null
-          feedback_due_at?: string | null
           id?: string
           issue?: string
           notes?: string | null
           object_id?: string | null
-          previous_service_request_id?: string | null
           priority?: string
-          problem_resolved?: boolean | null
           product_id?: string | null
-          reschedule_count?: number
-          reschedule_reason?: string | null
-          rescheduled_from?: string | null
-          resolution?: string | null
           scheduled_at?: string | null
-          service_plan_id?: string | null
-          service_type?: string
-          started_at?: string | null
           status?: string
           updated_at?: string
         }
@@ -1332,24 +1141,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "service_requests_previous_service_request_id_fkey"
-            columns: ["previous_service_request_id"]
-            isOneToOne: false
-            referencedRelation: "service_requests"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "service_requests_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "service_requests_service_plan_id_fkey"
-            columns: ["service_plan_id"]
-            isOneToOne: false
-            referencedRelation: "service_plans"
             referencedColumns: ["id"]
           },
         ]
@@ -1364,9 +1159,7 @@ export type Database = {
           description: string | null
           due_at: string | null
           id: string
-          service_request_id: string | null
           status: Database["public"]["Enums"]["task_status"]
-          task_type: string | null
           title: string
           updated_at: string
         }
@@ -1379,9 +1172,7 @@ export type Database = {
           description?: string | null
           due_at?: string | null
           id?: string
-          service_request_id?: string | null
           status?: Database["public"]["Enums"]["task_status"]
-          task_type?: string | null
           title: string
           updated_at?: string
         }
@@ -1394,9 +1185,7 @@ export type Database = {
           description?: string | null
           due_at?: string | null
           id?: string
-          service_request_id?: string | null
           status?: Database["public"]["Enums"]["task_status"]
-          task_type?: string | null
           title?: string
           updated_at?: string
         }
@@ -1413,13 +1202,6 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tasks_service_request_id_fkey"
-            columns: ["service_request_id"]
-            isOneToOne: false
-            referencedRelation: "service_requests"
             referencedColumns: ["id"]
           },
         ]

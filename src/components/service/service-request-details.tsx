@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -31,6 +31,7 @@ import {
   type ServiceTaskRow,
   type StaffOption,
 } from "@/lib/service";
+import { serviceKeys, invalidateServiceRequest } from "@/lib/service-queries";
 
 export function ServiceRequestDetails({
   request,
@@ -49,14 +50,7 @@ export function ServiceRequestDetails({
   const id = request?.id;
   const staffName = (uid?: string | null) => staff.find((s) => s.id === uid)?.full_name || "—";
 
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ["service"] });
-    qc.invalidateQueries({ queryKey: ["service-events", id] });
-    qc.invalidateQueries({ queryKey: ["service-callbacks", id] });
-    // общий префикс: обновляем и KPI (["service-tasks","kpi"]),
-    // и очередь перезвонов (["service-tasks","callbacks","queue"])
-    qc.invalidateQueries({ queryKey: ["service-tasks"] });
-  };
+  const invalidate = () => invalidateServiceRequest(qc, id);
 
   // ---- transition state ----
   const [target, setTarget] = useState("");
@@ -93,62 +87,67 @@ export function ServiceRequestDetails({
       setNewDate("");
       setReason("");
       invalidate();
-      onOpenChange(false);
+      // Не закрываем шторку — родитель подтянет свежую заявку в открытую
+      // карточку (см. useEffect в app.service.tsx). Так пользователь сразу
+      // видит новый статус/таймлайн, а не «прыгающий» лист без результата.
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
   // ---- history ----
-  const { data: events = [] } = useQuery({
-    queryKey: ["service-events", id],
+  const { data: events = [], error: eventsError } = useQuery({
+    queryKey: serviceKeys.events(id),
     enabled: !!id && open,
     queryFn: async () => {
       if (!id) return [];
-      return (
-        (
-          await supabase
-            .from("service_events")
-            .select("*")
-            .eq("service_request_id", id)
-            .order("occurred_at", { ascending: false })
-        ).data ?? []
-      );
+      const { data, error } = await supabase
+        .from("service_events")
+        .select("*")
+        .eq("service_request_id", id)
+        .order("occurred_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
     },
   });
 
   // ---- callbacks (tasks) ----
-  const { data: callbacks = [] } = useQuery({
-    queryKey: ["service-callbacks", id],
+  const { data: callbacks = [], error: callbacksError } = useQuery({
+    queryKey: serviceKeys.callbacks(id),
     enabled: !!id && open,
     queryFn: async () => {
       if (!id) return [];
-      return (
-        (
-          await supabase
-            .from("tasks")
-            .select("*")
-            .eq("service_request_id", id)
-            .order("due_at", { ascending: true })
-        ).data ?? []
-      );
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("*")
+        .eq("service_request_id", id)
+        .order("due_at", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
     },
   });
 
   // ---- plan ----
   const { data: plan } = useQuery({
-    queryKey: ["service-plan", request?.service_plan_id],
+    queryKey: serviceKeys.plan(request?.service_plan_id),
     enabled: !!request?.service_plan_id && open,
     queryFn: async () => {
       if (!request?.service_plan_id) return null;
-      return (
-        await supabase
-          .from("service_plans")
-          .select("*")
-          .eq("id", request.service_plan_id)
-          .maybeSingle()
-      ).data;
+      const { data, error } = await supabase
+        .from("service_plans")
+        .select("*")
+        .eq("id", request.service_plan_id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
     },
   });
+
+  useEffect(() => {
+    if (eventsError) toast.error(`История: ${eventsError.message}`);
+  }, [eventsError]);
+  useEffect(() => {
+    if (callbacksError) toast.error(`Перезвоны: ${callbacksError.message}`);
+  }, [callbacksError]);
 
   // new callback form
   const [cbDue, setCbDue] = useState("");
