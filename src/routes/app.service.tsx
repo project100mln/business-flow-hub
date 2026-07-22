@@ -72,6 +72,7 @@ function Service() {
   const [fDate, setFDate] = useState("");
   const [onlyOverdue, setOnlyOverdue] = useState(false);
   const [onlyToday, setOnlyToday] = useState(false);
+  const [activeTab, setActiveTab] = useState<ServiceTab>("board");
 
   const {
     data: items = [],
