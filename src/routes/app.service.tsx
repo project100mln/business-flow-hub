@@ -369,7 +369,56 @@ function Service() {
             </label>
           </div>
 
-          <div className="rounded-2xl border border-border bg-gradient-surface shadow-card overflow-x-auto">
+          {/* Мобильный список карточек (<md). На md+ показываем таблицу ниже.
+              Одна и та же выборка `filtered`, тот же openDetail/del. */}
+          <div className="md:hidden space-y-2">
+            {filtered.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => openDetail(s)}
+                className="w-full text-left rounded-2xl border border-border bg-gradient-surface shadow-card p-3"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{s.clients?.full_name || "—"}</div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {s.clients?.phone || "—"}
+                    </div>
+                  </div>
+                  <Badge variant="outline" className={`${STATUS_TONE[s.status]} shrink-0`}>
+                    {SERVICE_STATUS[s.status] || s.status}
+                  </Badge>
+                </div>
+                <div className="mt-2 text-sm line-clamp-2">{s.issue}</div>
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                  <span className="whitespace-nowrap">{fmtDateTime(s.scheduled_at)}</span>
+                  <span className="truncate">{staffName(s.assignee_id)}</span>
+                  {caps.canEditFinancialFields && (
+                    <span className="whitespace-nowrap">
+                      {new Intl.NumberFormat("ru-RU").format(Number(s.cost || 0))} ₸
+                    </span>
+                  )}
+                </div>
+              </button>
+            ))}
+            {filtered.length === 0 && (
+              <div className="rounded-2xl border border-border p-6 text-center text-sm text-muted-foreground">
+                {itemsLoading ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 className="size-4 animate-spin" /> Загружаем…
+                  </span>
+                ) : itemsError ? (
+                  <span className="inline-flex items-center gap-2 text-destructive">
+                    <AlertCircle className="size-4" /> Ошибка: {itemsError.message}
+                  </span>
+                ) : (
+                  "Заявок не найдено"
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="hidden md:block rounded-2xl border border-border bg-gradient-surface shadow-card overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
