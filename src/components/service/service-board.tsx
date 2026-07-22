@@ -1,4 +1,6 @@
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { AlertCircle, Loader2 } from "lucide-react";
 import {
   BOARD_GROUPS,
   SERVICE_STATUS,
@@ -11,10 +13,37 @@ import {
 export function ServiceBoard({
   items,
   onOpen,
+  isLoading = false,
+  error = null,
+  onRetry,
 }: {
   items: ServiceRequestWithRefs[];
   onOpen: (r: ServiceRequestWithRefs) => void;
+  isLoading?: boolean;
+  error?: Error | null;
+  onRetry?: () => void;
 }) {
+  if (isLoading && items.length === 0) {
+    return (
+      <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" /> Загружаем заявки…
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="rounded-2xl border border-destructive/40 bg-destructive/5 p-6 flex flex-col items-center gap-3">
+        <div className="flex items-center gap-2 text-destructive text-sm">
+          <AlertCircle className="size-4" /> Не удалось загрузить заявки: {error.message}
+        </div>
+        {onRetry && (
+          <Button size="sm" variant="outline" onClick={onRetry}>
+            Повторить
+          </Button>
+        )}
+      </div>
+    );
+  }
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {BOARD_GROUPS.map((g) => {
