@@ -39,12 +39,14 @@ export function ServiceRequestDetails({
   onOpenChange,
   staff,
   currentUserId,
+  onEdit,
 }: {
   request: ServiceRequestWithRefs | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
   staff: StaffOption[];
   currentUserId: string | null;
+  onEdit?: (r: ServiceRequestWithRefs) => void;
 }) {
   const qc = useQueryClient();
   const id = request?.id;
