@@ -518,12 +518,18 @@ function Row({ label, value }: { label: string; value?: string | null }) {
   );
 }
 
-function NoAnswer({ onReschedule }: { onReschedule: (when: string) => void }) {
+function NoAnswer({
+  onReschedule,
+  disabled,
+}: {
+  onReschedule: (when: string) => void;
+  disabled?: boolean;
+}) {
   const [when, setWhen] = useState("");
   const [openIt, setOpenIt] = useState(false);
   if (!openIt)
     return (
-      <Button size="sm" variant="outline" onClick={() => setOpenIt(true)}>
+      <Button size="sm" variant="outline" onClick={() => setOpenIt(true)} disabled={disabled}>
         Не дозвонились
       </Button>
     );
@@ -537,7 +543,7 @@ function NoAnswer({ onReschedule }: { onReschedule: (when: string) => void }) {
       />
       <Button
         size="sm"
-        disabled={!when}
+        disabled={!when || disabled}
         onClick={() => {
           onReschedule(when);
           setOpenIt(false);
