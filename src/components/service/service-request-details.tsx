@@ -222,13 +222,26 @@ export function ServiceRequestDetails({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
         <SheetHeader>
-          <SheetTitle className="flex items-center gap-2 flex-wrap">
-            {request.issue?.slice(0, 60) || "Заявка"}
-            <Badge variant="outline" className={STATUS_TONE[request.status]}>
-              {SERVICE_STATUS[request.status] || request.status}
-            </Badge>
-          </SheetTitle>
+          <div className="flex items-start justify-between gap-2">
+            <SheetTitle className="flex items-center gap-2 flex-wrap">
+              {request.issue?.slice(0, 60) || "Заявка"}
+              <Badge variant="outline" className={STATUS_TONE[request.status]}>
+                {SERVICE_STATUS[request.status] || request.status}
+              </Badge>
+            </SheetTitle>
+            {onEdit && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onEdit(request)}
+                className="shrink-0"
+              >
+                <Pencil className="size-4 mr-1" /> Редактировать
+              </Button>
+            )}
+          </div>
         </SheetHeader>
+
 
         {/* ---- Смена статуса ---- */}
         {allowed.length > 0 && (
