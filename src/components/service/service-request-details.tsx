@@ -142,6 +142,13 @@ export function ServiceRequestDetails({
     },
   });
 
+  useEffect(() => {
+    if (eventsError) toast.error(`История: ${eventsError.message}`);
+  }, [eventsError]);
+  useEffect(() => {
+    if (callbacksError) toast.error(`Перезвоны: ${callbacksError.message}`);
+  }, [callbacksError]);
+
   // new callback form
   const [cbDue, setCbDue] = useState("");
   const [cbAssignee, setCbAssignee] = useState(currentUserId || "");
