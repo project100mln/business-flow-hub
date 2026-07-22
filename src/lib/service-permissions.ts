@@ -57,6 +57,10 @@ export function getServiceCapabilities(roles: AppRole[]): ServiceCapabilities {
   const canDeletePlan = isAdmin; // manager/coordinator — без удаления (уровень RLS).
   const canDeleteRequest = isAdmin;
   const canViewServiceReports = isAdmin || isManager;
+  // Оператор редактирует заявку, но не финансы. Финансовые поля меняют
+  // только admin/manager/coordinator (координатор смыкает продажу
+  // с сервисом и часто фиксирует итоговую сумму).
+  const canEditFinancialFields = isAdmin || isManager || isCoordinator;
 
   // Исполнитель без других ролей — сужаем список в UI.
   const onlyAssignedInUI = isInstaller && !isAdmin && !isManager && !isCoordinator && !isOperator;
@@ -80,6 +84,7 @@ export function getServiceCapabilities(roles: AppRole[]): ServiceCapabilities {
     canDeletePlan,
     canDeleteRequest,
     canViewServiceReports,
+    canEditFinancialFields,
     onlyAssignedInUI,
     tabs,
   };
