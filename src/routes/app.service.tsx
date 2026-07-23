@@ -49,7 +49,7 @@ export const Route = createFileRoute("/app/service")({ component: Service });
 
 function Service() {
   const qc = useQueryClient();
-  const { roles, user } = useAuth();
+  const { roles, user, loading: authLoading } = useAuth();
   const caps = useMemo(() => getServiceCapabilities(roles), [roles]);
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -231,6 +231,13 @@ function Service() {
     const n = TRANSITIONS[r.status]?.[0];
     return n ? SERVICE_STATUS[n] : "—";
   };
+
+  // Пока грузятся сессия / профиль / enabled_modules — не мигаем заглушкой
+  // «Сервис недоступен»: роли ещё не приехали, caps.canViewService = false
+  // по умолчанию. Показываем skeleton, потом уже решаем.
+  if (authLoading) {
+    return <ServicePageSkeleton />;
+  }
 
   if (!caps.canViewService) {
     return (
@@ -609,5 +616,34 @@ function StaffSelect({
         ))}
       </SelectContent>
     </Select>
+  );
+}
+
+// Skeleton в стиле остальных страниц (rounded-2xl, border, surface, muted
+// pulse). Показываем ровно на время загрузки auth/roles, чтобы не мигнуть
+// ложным «Сервис недоступен» до того, как приедут роли.
+function ServicePageSkeleton() {
+  return (
+    <div className="p-4 sm:p-6 md:p-8 space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="space-y-2">
+          <div className="h-7 w-40 rounded-md bg-muted animate-pulse" />
+          <div className="h-4 w-64 rounded-md bg-muted/70 animate-pulse" />
+        </div>
+        <div className="h-9 w-36 rounded-md bg-muted animate-pulse" />
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-3">
+        {Array.from({ length: 9 }).map((_, i) => (
+          <div
+            key={i}
+            className="rounded-2xl border border-border bg-surface/40 p-3 space-y-2"
+          >
+            <div className="h-6 w-10 rounded bg-muted animate-pulse" />
+            <div className="h-3 w-20 rounded bg-muted/70 animate-pulse" />
+          </div>
+        ))}
+      </div>
+      <div className="rounded-2xl border border-border bg-surface/40 h-64 animate-pulse" />
+    </div>
   );
 }
