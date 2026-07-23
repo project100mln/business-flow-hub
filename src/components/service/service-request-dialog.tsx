@@ -283,7 +283,7 @@ export function ServiceRequestDialog({
       } else {
         const { error } = await supabase
           .from("service_requests")
-          .insert({ ...payload, status, created_by: currentUserId });
+          .insert({ ...payload, issue, status, created_by: currentUserId });
         if (error) throw error;
       }
     },
