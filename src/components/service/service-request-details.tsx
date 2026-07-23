@@ -72,6 +72,12 @@ export function ServiceRequestDetails({
       if (!caps.canChangeStatus) throw new Error(DENIED_MESSAGE);
       if (!id) throw new Error("Заявка не выбрана");
       if (!target) throw new Error("Выберите новый статус");
+      // Прикладное ограничение для installer: клиентски запрещаем менять
+      // статус чужих заявок ДО обращения в Supabase. Это не защита данных —
+      // окончательный запрет должен обеспечивать RLS/триггер (см. отчёт).
+      if (caps.onlyAssignedInUI && request?.assignee_id !== currentUserId) {
+        throw new Error(DENIED_MESSAGE);
+      }
       // Клиентская проверка FSM — сервер повторно валидирует триггером.
       const allowedNow = request ? (TRANSITIONS[request.status] ?? []) : [];
       if (!allowedNow.includes(target)) {
