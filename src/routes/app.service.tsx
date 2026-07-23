@@ -49,7 +49,7 @@ export const Route = createFileRoute("/app/service")({ component: Service });
 
 function Service() {
   const qc = useQueryClient();
-  const { roles, user } = useAuth();
+  const { roles, user, loading: authLoading } = useAuth();
   const caps = useMemo(() => getServiceCapabilities(roles), [roles]);
 
   const [dialogOpen, setDialogOpen] = useState(false);
