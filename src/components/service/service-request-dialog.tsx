@@ -121,7 +121,7 @@ export function ServiceRequestDialog({
     setClientSearch("");
     setShowNewClient(false);
     setNewClient({ full_name: "", phone: "", address: "" });
-  }, [open, editing, currentUserId]);
+  }, [open, editing, currentUserId, caps.canAssignRequest]);
 
   // сотрудники — только из profiles текущей компании (RLS ограничивает компанией)
   const { data: staff = [] } = useQuery({
