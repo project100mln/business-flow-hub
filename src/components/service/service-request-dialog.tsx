@@ -545,38 +545,40 @@ export function ServiceRequestDialog({
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <Label>Оператор-координатор</Label>
-              <Select value={coordinatorId} onValueChange={setCoordinatorId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="—" />
-                </SelectTrigger>
-                <SelectContent>
-                  {staff.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.full_name || "Без имени"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {caps.canAssignRequest && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label>Оператор-координатор</Label>
+                <Select value={coordinatorId} onValueChange={setCoordinatorId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {staff.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.full_name || "Без имени"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Выездной исполнитель</Label>
+                <Select value={assigneeId} onValueChange={setAssigneeId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {staff.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.full_name || "Без имени"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div>
-              <Label>Выездной исполнитель</Label>
-              <Select value={assigneeId} onValueChange={setAssigneeId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="—" />
-                </SelectTrigger>
-                <SelectContent>
-                  {staff.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.full_name || "Без имени"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          )}
 
           <div>
             <Label>Заметки</Label>
