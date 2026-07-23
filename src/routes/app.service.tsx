@@ -232,6 +232,13 @@ function Service() {
     return n ? SERVICE_STATUS[n] : "—";
   };
 
+  // Пока грузятся сессия / профиль / enabled_modules — не мигаем заглушкой
+  // «Сервис недоступен»: роли ещё не приехали, caps.canViewService = false
+  // по умолчанию. Показываем skeleton, потом уже решаем.
+  if (authLoading) {
+    return <ServicePageSkeleton />;
+  }
+
   if (!caps.canViewService) {
     return (
       <div className="p-4 sm:p-6 md:p-8">
