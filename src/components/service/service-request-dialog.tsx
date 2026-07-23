@@ -243,7 +243,12 @@ export function ServiceRequestDialog({
         return;
       }
 
-      const basePayload = {
+      // Whitelist payload: собираем поля пошагово и включаем поля назначения
+      // (coordinator_id / assignee_id) ТОЛЬКО если у роли есть право
+      // назначения. Так оператор не сможет ни очистить чужое назначение при
+      // обычном редактировании, ни отправить назначение при создании.
+      // Реальная защита — RLS/триггер/RPC на сервере (см. отчёт).
+      const payload: Record<string, unknown> = {
         client_id: clientId || null,
         object_id: objectId || null,
         product_id: productId || null,
@@ -251,19 +256,18 @@ export function ServiceRequestDialog({
         issue,
         priority,
         scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : null,
-        coordinator_id: coordinatorId || null,
-        assignee_id: assigneeId || null,
         notes: notes || null,
       };
-      // Финансовые поля меняем ТОЛЬКО если у роли есть право. При
-      // редактировании без права поле `cost` в payload не попадает,
-      // при создании оператор получает 0 по умолчанию. Реальная
-      // защита должна дублироваться на уровне RLS/триггера БД.
-      const payload = caps.canEditFinancialFields
-        ? { ...basePayload, cost: cost ? Number(cost) : 0 }
-        : isEdit
-          ? basePayload
-          : { ...basePayload, cost: 0 };
+      if (caps.canAssignRequest) {
+        payload.coordinator_id = coordinatorId || null;
+        payload.assignee_id = assigneeId || null;
+      }
+      if (caps.canEditFinancialFields) {
+        payload.cost = cost ? Number(cost) : 0;
+      } else if (!isEdit) {
+        // При создании нужен дефолт cost (NOT NULL в схеме).
+        payload.cost = 0;
+      }
       if (isEdit) {
         // статус здесь НЕ меняем — переходы идут через карточку заявки (FSM)
         const { error } = await supabase
