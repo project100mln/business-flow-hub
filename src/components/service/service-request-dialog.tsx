@@ -108,7 +108,9 @@ export function ServiceRequestDialog({
       setStatus("new");
       setPriority("normal");
       setScheduledAt("");
-      setCoordinatorId(currentUserId || "");
+      // Дефолт координатора = текущий пользователь ставим ТОЛЬКО если у роли
+      // есть право назначения. Иначе поле вообще не должно попасть в payload.
+      setCoordinatorId(caps.canAssignRequest ? currentUserId || "" : "");
       setAssigneeId("");
       setCost("");
       setNotes("");
