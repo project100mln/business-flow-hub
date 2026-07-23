@@ -618,3 +618,32 @@ function StaffSelect({
     </Select>
   );
 }
+
+// Skeleton в стиле остальных страниц (rounded-2xl, border, surface, muted
+// pulse). Показываем ровно на время загрузки auth/roles, чтобы не мигнуть
+// ложным «Сервис недоступен» до того, как приедут роли.
+function ServicePageSkeleton() {
+  return (
+    <div className="p-4 sm:p-6 md:p-8 space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="space-y-2">
+          <div className="h-7 w-40 rounded-md bg-muted animate-pulse" />
+          <div className="h-4 w-64 rounded-md bg-muted/70 animate-pulse" />
+        </div>
+        <div className="h-9 w-36 rounded-md bg-muted animate-pulse" />
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-3">
+        {Array.from({ length: 9 }).map((_, i) => (
+          <div
+            key={i}
+            className="rounded-2xl border border-border bg-surface/40 p-3 space-y-2"
+          >
+            <div className="h-6 w-10 rounded bg-muted animate-pulse" />
+            <div className="h-3 w-20 rounded bg-muted/70 animate-pulse" />
+          </div>
+        ))}
+      </div>
+      <div className="rounded-2xl border border-border bg-surface/40 h-64 animate-pulse" />
+    </div>
+  );
+}
