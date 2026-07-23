@@ -23,7 +23,13 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Search, UserPlus, AlertTriangle, Check } from "lucide-react";
 import { toast } from "sonner";
-import { PRIORITY, SERVICE_TYPE, normalizePhone, type ServiceRequestWithRefs } from "@/lib/service";
+import {
+  PRIORITY,
+  SERVICE_TYPE,
+  normalizePhone,
+  type ServiceRequestWithRefs,
+  type ServiceRequestUpdate,
+} from "@/lib/service";
 import type { ServiceCapabilities } from "@/lib/service-permissions";
 import {
   serviceKeys,
@@ -108,7 +114,9 @@ export function ServiceRequestDialog({
       setStatus("new");
       setPriority("normal");
       setScheduledAt("");
-      setCoordinatorId(currentUserId || "");
+      // Дефолт координатора = текущий пользователь ставим ТОЛЬКО если у роли
+      // есть право назначения. Иначе поле вообще не должно попасть в payload.
+      setCoordinatorId(caps.canAssignRequest ? currentUserId || "" : "");
       setAssigneeId("");
       setCost("");
       setNotes("");
@@ -119,7 +127,7 @@ export function ServiceRequestDialog({
     setClientSearch("");
     setShowNewClient(false);
     setNewClient({ full_name: "", phone: "", address: "" });
-  }, [open, editing, currentUserId]);
+  }, [open, editing, currentUserId, caps.canAssignRequest]);
 
   // сотрудники — только из profiles текущей компании (RLS ограничивает компанией)
   const { data: staff = [] } = useQuery({
@@ -241,7 +249,12 @@ export function ServiceRequestDialog({
         return;
       }
 
-      const basePayload = {
+      // Whitelist payload: собираем поля пошагово и включаем поля назначения
+      // (coordinator_id / assignee_id) ТОЛЬКО если у роли есть право
+      // назначения. Так оператор не сможет ни очистить чужое назначение при
+      // обычном редактировании, ни отправить назначение при создании.
+      // Реальная защита — RLS/триггер/RPC на сервере (см. отчёт).
+      const payload: ServiceRequestUpdate = {
         client_id: clientId || null,
         object_id: objectId || null,
         product_id: productId || null,
@@ -249,19 +262,17 @@ export function ServiceRequestDialog({
         issue,
         priority,
         scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : null,
-        coordinator_id: coordinatorId || null,
-        assignee_id: assigneeId || null,
         notes: notes || null,
       };
-      // Финансовые поля меняем ТОЛЬКО если у роли есть право. При
-      // редактировании без права поле `cost` в payload не попадает,
-      // при создании оператор получает 0 по умолчанию. Реальная
-      // защита должна дублироваться на уровне RLS/триггера БД.
-      const payload = caps.canEditFinancialFields
-        ? { ...basePayload, cost: cost ? Number(cost) : 0 }
-        : isEdit
-          ? basePayload
-          : { ...basePayload, cost: 0 };
+      if (caps.canAssignRequest) {
+        payload.coordinator_id = coordinatorId || null;
+        payload.assignee_id = assigneeId || null;
+      }
+      if (caps.canEditFinancialFields) {
+        payload.cost = cost ? Number(cost) : 0;
+      } else if (!isEdit) {
+        payload.cost = 0;
+      }
       if (isEdit) {
         // статус здесь НЕ меняем — переходы идут через карточку заявки (FSM)
         const { error } = await supabase
@@ -272,7 +283,7 @@ export function ServiceRequestDialog({
       } else {
         const { error } = await supabase
           .from("service_requests")
-          .insert({ ...payload, status, created_by: currentUserId });
+          .insert({ ...payload, issue, status, created_by: currentUserId });
         if (error) throw error;
       }
     },
@@ -534,38 +545,40 @@ export function ServiceRequestDialog({
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <Label>Оператор-координатор</Label>
-              <Select value={coordinatorId} onValueChange={setCoordinatorId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="—" />
-                </SelectTrigger>
-                <SelectContent>
-                  {staff.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.full_name || "Без имени"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {caps.canAssignRequest && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label>Оператор-координатор</Label>
+                <Select value={coordinatorId} onValueChange={setCoordinatorId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {staff.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.full_name || "Без имени"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Выездной исполнитель</Label>
+                <Select value={assigneeId} onValueChange={setAssigneeId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {staff.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.full_name || "Без имени"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div>
-              <Label>Выездной исполнитель</Label>
-              <Select value={assigneeId} onValueChange={setAssigneeId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="—" />
-                </SelectTrigger>
-                <SelectContent>
-                  {staff.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.full_name || "Без имени"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          )}
 
           <div>
             <Label>Заметки</Label>
