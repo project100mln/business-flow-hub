@@ -254,7 +254,7 @@ export function ServiceRequestDialog({
       // назначения. Так оператор не сможет ни очистить чужое назначение при
       // обычном редактировании, ни отправить назначение при создании.
       // Реальная защита — RLS/триггер/RPC на сервере (см. отчёт).
-      const payload: Record<string, unknown> = {
+      const payload: ServiceRequestUpdate = {
         client_id: clientId || null,
         object_id: objectId || null,
         product_id: productId || null,
@@ -271,7 +271,6 @@ export function ServiceRequestDialog({
       if (caps.canEditFinancialFields) {
         payload.cost = cost ? Number(cost) : 0;
       } else if (!isEdit) {
-        // При создании нужен дефолт cost (NOT NULL в схеме).
         payload.cost = 0;
       }
       if (isEdit) {
